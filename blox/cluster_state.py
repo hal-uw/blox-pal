@@ -42,6 +42,10 @@ class ClusterState(object):
                 "IP_addr",
                 "IN_USE",
                 "JOB_IDS",
+                "PerfVar_classA",
+                "PerfVar_classB",
+                "PerfVar_classC",
+                "PerfVar_classD",
             ]
         )
         self.time = 0
@@ -71,6 +75,8 @@ class ClusterState(object):
                     for local_gpu_id, gpu_uuid in zip(
                         range(numGPUs_on_node), gpu_uuid_list
                     ):
+                        # get per-class PerfVar value corresponding to gpu_uuid
+                        perfvar_arr = self._get_machine_slowdowns(gpu_uuid)
                         gpuID_list.append(
                             {
                                 "GPU_ID": self.gpu_number,
@@ -80,6 +86,10 @@ class ClusterState(object):
                                 "IP_addr": node_info["ipaddr"],
                                 "IN_USE": False,
                                 "JOB_IDS": None,
+                                "PerfVar_classA": perfvar_arr["classA"],
+                                "PerfVar_classB": perfvar_arr["classB"],
+                                "PerfVar_classC": perfvar_arr["classC"],
+                                "PerfVar_classD": perfvar_arr["classD"],
                             }
                         )
                         self.gpu_number += 1
@@ -102,3 +112,29 @@ class ClusterState(object):
         if len(new_nodes) > 0:
             self._add_new_machines(new_nodes)
         return new_nodes
+
+
+    def _get_machine_slowdowns(self, gpu_uuid):
+        norm_perfvar = {}
+        # Read profiles.json to get list of aggregated CSV names
+        with open('profiles.json') as json_file:
+            perfclasses = json.load(json_file)
+
+        for key in perfclasses:
+            df_new = pd.read_csv(perfclasses[key])
+
+            # need to ensure that we sample at most 1 entry per unique GPU 
+            df_sliced = df_new.loc[df_new.groupby('uuid')['perf'].idxmax()]
+
+            median_value = df_sliced['perf'].median()
+
+            df_sliced['perf'] = df_sliced['perf'].apply(lambda x: x / median_value)
+
+            gpu_row = df_sliced[df_sliced['uuid'] == gpu_uuid]
+
+            if not gpu_row.empty:
+                norm_perfvar[key] = gpu_row['perf'].iloc[0]
+            else:
+                norm_perfvar[key] = 1.0
+
+        return norm_perfvar

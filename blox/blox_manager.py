@@ -247,7 +247,7 @@ class BloxManager(object):
 
         if all(jid in job_state.finished_job for jid in job_state.job_ids_to_track):
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_load_{self.load}_job_stats.json",
+                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_job_stats.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.job_completion_stats))
@@ -258,21 +258,21 @@ class BloxManager(object):
                 json.dump(job_state.job_completion_stats, fopen)
 
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_load_{self.load}_cluster_stats.json",
+                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_cluster_stats.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.cluster_stats))
                 json.dump(cluster_state.cluster_stats, fopen)
             # sys.exit(0)
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_load_{self.load}_run_time_stats.json",
+                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_run_time_stats.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.cluster_stats))
                 json.dump(job_state.job_runtime_stats, fopen)
 
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_load_{self.load}_responsivness.json",
+                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_responsivness.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.cluster_stats))
@@ -284,7 +284,7 @@ class BloxManager(object):
                 )
                 json.dump(job_state.job_responsiveness_stats, fopen)
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_load_{self.load}_custom_metrics.json",
+                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_custom_metrics.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.cluster_stats))

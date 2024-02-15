@@ -3,6 +3,7 @@ import sys
 import json
 import grpc
 import argparse
+import random
 import numpy as np
 from workload import Workload
 from concurrent import futures
@@ -40,7 +41,7 @@ class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
         model_class_split=(34, 33, 33),
         ipaddr_resource_manager="localhost",
         exponential=True,
-        multigpu=False,
+        multigpu=True,
         small_trace=False,
         placement=True,
         prioritize=False,
@@ -285,6 +286,32 @@ class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
                     dpi=600,
                     bbox_inches="tight",
                 )
+                
+    def _get_perfclass(self, job, class_id):
+        if "perfclass" in job and (job.get("perfclass")) is not None:
+            return job["perfclass"]
+        else:
+            if class_id == 0: #alexnet
+                return "classA"
+            elif class_id == 1: #res18
+                return "classC"
+            elif class_id == 2: #res50
+                return "classA"
+            elif class_id == 3: #mobilenet
+                return "classD"
+            elif class_id == 4: #shufflenet
+                return "classD"
+            elif class_id == 5: #gnmt
+                return "classB"
+            elif class_id == 6: #transformer
+                return "classB"
+            elif class_id == 7: #lstm
+                return "classD"
+            elif class_id == 8: #deepspeech
+                return "classB"
+            else:
+                return "classB"
+
 
     def _clean_sim_job(self, new_job: dict) -> dict:
         """
@@ -305,6 +332,7 @@ class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
             new_job.pop("job_model")
 
         new_job["num_GPUs"] = new_job["job_gpu_demand"]
+        new_job["perfclass"] = self._get_perfclass(new_job, new_job["job_class_id"])
         # new_job["params_to_track"] = [
         # "per_iter_time",
         # "attained_service",
@@ -400,11 +428,11 @@ def parse_args(parser):
     )
     parser.add_argument("--jobs-per-hour", type=int, default=5, help="Jobs per hour")
     parser.add_argument(
-        "--start-job-track", type=int, default=3000, help="Start ID of job to track"
+        "--start-job-track", type=int, default=2000, help="Start ID of job to track"
     )
 
     parser.add_argument(
-        "--end-job-track", type=int, default=4000, help="End ID of job to track"
+        "--end-job-track", type=int, default=3000, help="End ID of job to track"
     )
     parser.add_argument(
         "--scheduler", type=str, default="Fifo", help="Name of the scheduler"
@@ -427,16 +455,20 @@ def launch_server(args) -> grpc.Server:
     simulator_pb2_grpc.add_SimServerServicer_to_server(
         SimulatorRunner(
             args.cluster_job_log,
-            np.arange(1, 10, 1.0).tolist(),
+            np.arange(2.0, 4.0, 2.0).tolist(),
             (args.start_job_track, args.end_job_track),
             [
-                "Tiresias",
-                "Optimus",
                 "Fifo",
             ],
-            ["Place"],
+            [   
+                "Default-Packed-S",
+                "Default-Packed-NS",
+                "Default-Random-S",
+                "Default-Random-NS",                
+            ],
             ["AcceptAll"],
             exp_prefix=args.exp_prefix,
+            multigpu=True
         ),
         server,
     )

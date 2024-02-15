@@ -4,7 +4,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 import os
 import argparse
 import schedulers
-from placement import placement
+from placement import *
 import admission_control
 from blox import BloxManager
 from blox import ClusterState
@@ -45,6 +45,18 @@ def main(args):
             # choosing which policy to run
             if args.placement_name == "Place":
                 placement_policy = placement.JobPlacement(args)
+            elif args.placement_name == "PMFirst":
+                placement_policy = PMFirstPlacement()
+            elif args.placement_name == "PAL":
+                placement_policy = PALPlacement()
+            elif args.placement_name == "Default-Packed-NS":
+                placement_policy = PackedNSPlacement()
+            elif args.placement_name == "Default-Packed-S":
+                 placement_policy = PackedSPlacement()
+            elif args.placement_name == "Default-Random-NS":
+                placement_policy = RandomNSPlacement()
+            elif args.placement_name == "Default-Random-S":
+                placement_policy = RandomSPlacement()
             else:
                 raise NotImplemented(
                     f"Placement Policy {args.placement_policy} not Implemented"
@@ -101,6 +113,7 @@ def main(args):
                     job_state,
                 )
                 print("GPU Df {}".format(cluster_state.gpu_df))
+                cluster_state.gpu_df.to_csv("gpu_df.csv")
 
                 job_state.add_new_jobs(accepted_jobs)
                 new_job_schedule = scheduling_policy.schedule(job_state, cluster_state)
