@@ -26,7 +26,7 @@ from torch.nn import DataParallel
 from torchvision import transforms
 from workloads.lucid.pointnet.dataset import ShapeNetDataset
 from workloads.lucid.pointnet.pointnet import PointNetCls, feature_transform_regularizer
-from applications.blox_enumerator import bloxEnumerate
+from blox_enumerator import bloxEnumerate
 
 # Benchmark settings
 parser = argparse.ArgumentParser(

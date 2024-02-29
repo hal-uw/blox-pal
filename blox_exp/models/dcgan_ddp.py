@@ -25,7 +25,7 @@ sys.path.append(
     )
 )
 
-from applications.blox_enumerator import bloxEnumerate
+from blox_enumerator import bloxEnumerate
 
 # Benchmark settings
 parser = argparse.ArgumentParser(
