@@ -24,15 +24,6 @@ class Job:
         self.job_gpu_demand_orig = job_gpu_demand
         self.job_iteration_time_orig = job_iteration_time
 
-        # colocate information
-        # {f"{mdl}_{gpu_num}_{bs}": (this.speed, colocate.speed)}
-        self.small_colocate_dict = {}
-        # {f"{mdl}_{gpu_num}_{bs}": [('pipeline_strategy', 'co_pipeline_rank', large_model_speed, small_model_speed)]}
-        self.large_colocate_dict = {}
-        self.small_model_list = ['resnet50', 'vgg19', 'DCGAN', 'PointNet']
-        self.large_model_list = ['Bert-Base', 'Bert-Large', 'GPT2', 'GPT2-Medium', 'GPT2-XL']
-        self.init_colocate_info()
-
         # job state
         self.gpus = list()
         self.num_allocated_gpus = 0
@@ -55,71 +46,6 @@ class Job:
             self.job_id, self.job_model, self.job_gpu_demand, self.job_arrival_time, self.job_total_iteration
         )
     
-    def init_colocate_info(self):
-        colocate_df = pd.read_csv(
-            filepath_or_buffer="/global/homes/s/songbian/Megatron-Resource/blox_exp/colocate_info/norm_speed.csv",
-            dtype={"model1": str, "model2": str,
-                   "batch_size1": str, "batch_size2": str,
-                   "gpu_num1": int, "gpu_num2": int,
-                   "speed1": float, "speed2": float,
-                   "co_pipeline_rank": str, "pipeline_strategy": str}
-        )
-
-        if self.job_model in self.large_model_list:
-            for _, value in colocate_df.iterrows():
-                if value.model2 == "Empty":
-                    pass
-                else:
-                    if (value.model1 == self.job_model
-                            and value.gpu_num1 == self.job_gpu_demand
-                            and value.model2 in self.small_model_list):
-                        if (f"{value.model2}_{value.gpu_num2}_{value.batch_size2}"
-                                not in self.large_colocate_dict.keys()):
-                            self.large_colocate_dict[
-                                f"{value.model2}_{value.gpu_num2}_{value.batch_size2}"
-                            ] = []
-                        self.large_colocate_dict[
-                            f"{value.model2}_{value.gpu_num2}_{value.batch_size2}"
-                        ].append(
-                            (value.pipeline_strategy, value.co_pipeline_rank, value.speed1, value.speed2)
-                        )
-
-        elif self.job_model in self.small_model_list:
-            for _, value in colocate_df.iterrows():
-                if value.model2 == "Empty":
-                    pass
-                else:
-                    if (value.model1 == self.job_model
-                            and value.gpu_num1 == self.job_gpu_demand
-                            and value.batch_size1 == self.batch_size
-                            and value.model2 in self.small_model_list):
-                        self.small_colocate_dict[
-                            f"{value.model2}_{value.gpu_num2}_{value.batch_size2}"
-                        ] = (value.speed1, value.speed2)
-                    elif (value.model2 == self.job_model
-                            and value.gpu_num2 == self.job_gpu_demand
-                            and value.batch_size2 == self.batch_size
-                            and value.model1 in self.small_model_list):
-                        self.small_colocate_dict[
-                            f"{value.model1}_{value.gpu_num1}_{value.batch_size1}"
-                        ] = (value.speed2, value.speed1)
-                    elif (value.model2 == self.job_model
-                            and value.gpu_num2 == self.job_gpu_demand
-                            and value.batch_size2 == self.batch_size
-                            and value.model1 in self.large_model_list):
-                        if f"{value.model1}_{value.gpu_num1}_NA" not in self.large_colocate_dict.keys():
-                            self.large_colocate_dict[
-                                f"{value.model1}_{value.gpu_num1}_NA"
-                            ] = []
-                        self.large_colocate_dict[
-                            f"{value.model1}_{value.gpu_num1}_NA"
-                        ].append(
-                            (value.pipeline_strategy, value.co_pipeline_rank, value.speed1, value.speed2)
-                        )
-        
-        else:
-            raise ValueError("the job model is not considered now!!!")
-
     def init_launch(self):
         default_placement = ''
         split_strategy = ''
@@ -130,7 +56,7 @@ class Job:
         split_strategy = split_strategy[:-1]
         if self.job_model == 'Bert-Base':
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_bert_base.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_bert_base.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
                 str(1),
@@ -141,7 +67,7 @@ class Job:
             ]
         elif self.job_model == 'Bert-Large':
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_bert_large.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_bert_large.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
                 str(1),
@@ -152,7 +78,7 @@ class Job:
             ]
         elif self.job_model == 'GPT2':
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_gpt.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_gpt.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
                 str(1),
@@ -163,7 +89,7 @@ class Job:
             ]
         elif self.job_model == 'GPT2-Medium':
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_gpt_medium.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_gpt_medium.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
                 str(1),
@@ -174,7 +100,7 @@ class Job:
             ]
         elif self.job_model == 'GPT2-XL':
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_gpt_xl.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_gpt_xl.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
                 str(1),
@@ -185,20 +111,20 @@ class Job:
             ]
         elif self.job_model == "resnet50" or self.job_model == "vgg19":
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_imagenet.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_imagenet.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
                 self.job_model
             ]
         elif self.job_model == "DCGAN":
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_dcgan.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_dcgan.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
             ]
         elif self.job_model == "PointNet":
             self.launch_command = \
-                "bash /global/homes/s/songbian/Megatron-Resource/blox_exp/scripts/run_pointnet.sh"
+                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_pointnet.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
             ]

@@ -8,12 +8,11 @@ import pandas as pd
 
 from job import Job
 
-
 sys.path.append(
     os.path.join(os.path.dirname(__file__), "../blox/deployment/grpc_stubs")
 )
-import blox.deployment.grpc_stubs.rm_pb2 as rm_pb2
-import blox.deployment.grpc_stubs.rm_pb2_grpc as rm_pb2_grpc
+import rm_pb2 as rm_pb2
+import rm_pb2_grpc as rm_pb2_grpc
 
 
 def preprocess_job(new_job):

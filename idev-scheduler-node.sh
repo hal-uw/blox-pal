@@ -29,7 +29,7 @@ echo "$ip_address" >> "$SCRATCH/scheduler-ip.txt"
 
 echo "Information saved to $SCRATCH/scheduler-ip.txt"
 
-cd $SCRATCH
+cd $SCRATCH/blox-pal
 
 echo "Laucnhing Scheduler"
 # Launch scheduler
