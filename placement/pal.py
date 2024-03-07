@@ -543,7 +543,7 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict,dict,dict]:
         # Order of traversing Locality x sf matrix
         # Penalties for within and across allocations
         lf_within        = 1.0
-        lf_across        = 1.0 # TODO could be a function of key/perfclass
+        lf_across        = 1.734 # TODO could be a function of key/perfclass
         sfs_list = df_copy['sf'].unique()
 
         # Ordering of sfs vs locality for each class

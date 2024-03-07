@@ -69,6 +69,31 @@ class JobState(object):
                     self.active_jobs[jid]["tracked_metrics"] = metric_data.get(jid)
 
         return None
+    
+    def _get_perfclass(self, job, class_id):
+        if "perfclass" in job and (job.get("perfclass")) is not None:
+            return job["perfclass"]
+        else:
+            if class_id == 0: #alexnet
+                return "classA"
+            elif class_id == 1: #res18
+                return "classC"
+            elif class_id == 2: #res50
+                return "classA"
+            elif class_id == 3: #mobilenet
+                return "classD"
+            elif class_id == 4: #shufflenet
+                return "classD"
+            elif class_id == 5: #gnmt
+                return "classB"
+            elif class_id == 6: #transformer
+                return "classB"
+            elif class_id == 7: #lstm
+                return "classD"
+            elif class_id == 8: #deepspeech
+                return "classB"
+            else:
+                return "classB"
 
     def add_new_jobs(self, new_jobs: List[dict]) -> None:
         """

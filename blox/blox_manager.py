@@ -203,40 +203,44 @@ class BloxManager(object):
         )
 
         gpu_demand = 0
+        running_jobs_dict = {}
         for jid in job_state.active_jobs:
             gpu_demand += job_state.active_jobs[jid]["num_GPUs"]
+            if job_state.active_jobs[jid]["is_running"] == True:
+                running_jobs_dict[jid] = cluster_state.get_gpus_by_job_id(jid)
 
-        cluster_state.cluster_stats[cluster_state.time] = {
+        cluster_state.cluster_stats[self.time] = {
             "total_jobs": total_jobs,
             "jobs_in_queue": jobs_in_queue,
             "jobs_running": jobs_running,
             "free_gpus": free_gpus,
             "gpu_demand": gpu_demand,
+            "allocation_dict": running_jobs_dict,
         }
 
         #
 
-        total_jobs, jobs_in_queue, jobs_running = _get_jobs_status(job_state)
+        # total_jobs, jobs_in_queue, jobs_running = _get_jobs_status(job_state)
 
-        # gpu utilization
+        # # gpu utilization
 
-        free_gpus = len(
-            cluster_state.gpu_df[cluster_state.gpu_df["IN_USE"] == False][
-                "GPU_ID"
-            ].tolist()
-        )
+        # free_gpus = len(
+        #     cluster_state.gpu_df[cluster_state.gpu_df["IN_USE"] == False][
+        #         "GPU_ID"
+        #     ].tolist()
+        # )
 
-        gpu_demand = 0
-        for jid in job_state.active_jobs:
-            gpu_demand += job_state.active_jobs[jid]["num_GPUs"]
+        # gpu_demand = 0
+        # for jid in job_state.active_jobs:
+        #     gpu_demand += job_state.active_jobs[jid]["num_GPUs"]
 
-        cluster_state.cluster_stats[cluster_state.time] = {
-            "total_jobs": total_jobs,
-            "jobs_in_queue": jobs_in_queue,
-            "jobs_running": jobs_running,
-            "free_gpus": free_gpus,
-            "gpu_demand": gpu_demand,
-        }
+        # cluster_state.cluster_stats[self.time] = {
+        #     "total_jobs": total_jobs,
+        #     "jobs_in_queue": jobs_in_queue,
+        #     "jobs_running": jobs_running,
+        #     "free_gpus": free_gpus,
+        #     "gpu_demand": gpu_demand,
+        # }
 
         # find the jobs have been finished
         # print(
