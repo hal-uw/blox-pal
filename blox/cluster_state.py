@@ -7,6 +7,7 @@ import logging
 import argparse
 import pandas as pd
 import time
+import random
 from concurrent import futures
 
 from typing import Tuple, List
@@ -50,6 +51,7 @@ class ClusterState(object):
         )
         self.time = 0
         self.cluster_stats = dict()
+        random.seed(42)
 
     # def get_new_nodes(self):
     # """
@@ -138,6 +140,13 @@ class ClusterState(object):
             if not gpu_row.empty:
                 norm_perfvar[key] = gpu_row['perf'].iloc[0]
             else:
-                norm_perfvar[key] = 1.0
+                #randomly sample df_sliced['perf'] value from dataframe
+                norm_perfvar[key] = random.choice(df_sliced['perf'])
 
         return norm_perfvar
+    
+    def get_gpus_by_job_id(self, job_id):
+        # Filter the DataFrame based on JOB_ID and IN_USE
+        filtered_df = self.gpu_df[(self.gpu_df['JOB_IDS'] == job_id) & (self.gpu_df['IN_USE'] == True)]
+        gpu_ids = filtered_df['GPU_ID'].tolist()
+        return gpu_ids

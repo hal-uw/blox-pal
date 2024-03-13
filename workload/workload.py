@@ -46,6 +46,7 @@ class Workload(object):
         num_jobs_default=5,
         trace=None,
     ):
+        self.trace = trace
         if trace is not None:
             self.workload_type = "replay"
         elif cluster_job_log is None:
@@ -419,12 +420,12 @@ class Workload(object):
                     None,
                     None,
                     0,
-                    iter_is_duration=False,
+                    iter_is_duration=True,
                 )
                 job.job_task, job.job_class_id = self.model_zoo.get_job_class_by_name(
                     job_stats[1]
                 )
-                self.add_synergy_profile(job)
+                #self.add_synergy_profile(job)
                 jobs.append(job)
         return jobs
 
