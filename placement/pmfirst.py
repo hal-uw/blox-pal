@@ -13,8 +13,8 @@ import csv
 import itertools
 
 class PMFirstPlacement(object):
-    def __init__(self):
-        # per class dataframes containing GPU_ID, Node_ID and sf for all GPUs
+    def __init__(self, args):
+        # per class datafra`mes containing GPU_ID, Node_ID and sf for all GPUs
         self.dict_of_dfs = {}
         pass
 

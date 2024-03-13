@@ -5,7 +5,6 @@ import os.path
 import torch
 import numpy as np
 import sys
-from tqdm import tqdm
 import json
 from plyfile import PlyData, PlyElement
 
@@ -36,7 +35,7 @@ def get_segmentation_classes(root):
             for fn in meta[item]:
                 datapath.append((item, fn[0], fn[1]))
 
-            for i in tqdm(range(len(datapath))):
+            for i in range(len(datapath)):
                 l = len(np.unique(np.loadtxt(datapath[i][-1]).astype(np.uint8)))
                 if l > num_seg_classes:
                     num_seg_classes = l

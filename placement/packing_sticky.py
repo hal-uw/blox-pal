@@ -6,7 +6,7 @@ import random
 import collections
 
 class PackedSPlacement(object):
-    def __init__(self):
+    def __init__(self, args):
         pass
 
     @staticmethod

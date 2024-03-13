@@ -75,7 +75,7 @@ def benchmark_imagenet(model_name, batch_size):
 
     # Load the ImageNet dataset
     train_dataset = ImageFolder(
-        root="/scratch1/08503/rnjain/data-files/imagenet/tiny-imagenet-200", transform=transform
+        root="/scratch1/08503/rnjain/data-files/imagenet/ILSVRC2012_img_train", transform=transform
     )
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     # Create the DataLoader for the training and validation datasets
