@@ -13,7 +13,7 @@ import csv
 import itertools
 
 class PALPlacement(object):
-    def __init__(self):
+    def __init__(self, args):
         # order of traversing sf x locality matrix
         self.alloc_order = {}
         # per class dataframes containing GPU_ID, Node_ID and sf for all GPUs
@@ -478,6 +478,10 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict,dict,dict]:
     order = {}
     df_copy = gpu_df.copy() # making a modifiable copy
 
+    if df_copy.empty:
+        # no nodes registered yet, return empty dict/list to call function later
+        return {}, {}
+
     # Create a dictionary to store GPU indices grouped by Node_ID
     node_id_dict = {}
     for idx, row in gpu_df.iterrows():
@@ -543,7 +547,7 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict,dict,dict]:
         # Order of traversing Locality x sf matrix
         # Penalties for within and across allocations
         lf_within        = 1.0
-        lf_across        = 1.0 # TODO could be a function of key/perfclass
+        lf_across        = 1.734
         sfs_list = df_copy['sf'].unique()
 
         # Ordering of sfs vs locality for each class

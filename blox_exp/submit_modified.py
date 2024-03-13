@@ -29,7 +29,7 @@ def main(scheduler_ipaddr):
         scheduler_ipaddr: IP-Address of the scheduler code.
     """
     df = pd.read_csv(
-        filepath_or_buffer="/scratch1/08503/rnjain/Megatron-Resource/blox_exp/workload/test_single.csv",
+        filepath_or_buffer="/scratch1/08503/rnjain/blox-pal/blox_exp/workload/test_single.csv",
         dtype={
             "job_id": int,
             "num_gpus": int,
