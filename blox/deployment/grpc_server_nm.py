@@ -32,9 +32,24 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
         self.local_data_store = DataRelay(
             use_redis=use_redis, redis_host=redis_host, redis_port=redis_port
         )
+
+        # Will keep job terminate ids in this list
+        self.job_terminate_ids = list()
         # else:
         # # configuring local data store with python dict
         # self.local_data_store = DataRelay()
+
+    def ensure_terminate_status(self):
+        """
+        Check if all jobs in the terminate list have terminated before finishing the launch.
+        """
+        if len(self.job_terminate_ids) > 0:
+            while len(self.job_terminate_ids) > 0:
+                jid_to_test = self.job_terminate_ids.pop()
+                job_status = self.local_data_store.get_job_status(jid_to_test)
+                while job_status != "exit":
+                    time.sleep(1)
+                    job_status = self.local_data_store.get_job_status(jid_to_test)
 
     def LaunchJob(self, request, context) -> rm_pb2.BooleanResponse:
         """
@@ -49,7 +64,12 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
         # resume_iter = received_job["resume_iter"]
         resume_iter = 0
         job_id = received_job["job_id"]
+        environment_variable_pairs = received_job["env_variables"]
+
+        # check if all previous jobs have terminated
+        self.ensure_terminate_status()
         self.local_data_store.set_lease_status(received_job["job_id"], True)
+        self.local_data_store.set_job_status(received_job["job_id"], "running")
         # os.environ["BLOX_JOB_ID"] = str(received_job["job_id"])
         # os.environ["GPU_ID"] = str(received_job["local_GPU_ID"])
         # os.environ["BLOX_LOG_DIR"] = "temp"
@@ -61,12 +81,14 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
         print(
             f"{command_to_run}  {' '.join(str(i) for i in launch_params)}  2>&1 | tee /dev/shm/job_{job_id}_local_gpu_{local_gpu_id}.log"
         )
+        print("Environment variable pair {}".format(environment_variable_pairs))
         proc = subprocess.Popen(
             f"{command_to_run}  {' '.join(str(i) for i in launch_params)}  2>&1 | tee /dev/shm/job_{job_id}_local_gpu_{local_gpu_id}.log",
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
             shell=True,
+            env=environment_variable_pairs,
         )
         # with open("job_file_db.txt", "w") as fopen:
         # fopen.write(
@@ -86,6 +108,7 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
         print("Called Terminate")
         job_id_to_terminate = json.loads(request.response)["Job_ID"]
         print("Terminate Job {}".format(job_id_to_terminate))
+        self.job_terminate_ids.append(job_id_to_terminate)
         self.local_data_store.set_lease_status(job_id_to_terminate, False)
         return rm_pb2.BooleanResponse(value=True)
 
