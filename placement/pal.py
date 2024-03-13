@@ -337,7 +337,7 @@ def _return_pmfirst_gpus(df_filt: pd.DataFrame, numGPUs_needed: int) -> list:
     Returns:
     list: [list of best GPUs to be allocated to jon ]
     """  
-    df_filt['locality_score'] = df_filt.groupby('Node_ID')['Node_ID'].transform('count')
+    df_filt['locality_score'] = df_filt.groupby(['sf','Node_ID'])['Node_ID'].transform('count')
     # Best-match locality score
     df_filt['locality_score'] = abs(df_filt['locality_score'] - numGPUs_needed)
     df_filt = df_filt.sort_values(by=['sf','locality_score'], ascending=[True, True])
@@ -471,7 +471,7 @@ def get_optimal_k(data: pd.DataFrame, outliers: pd.Series) -> int:
         #optimal_k += num_outliers
         return optimal_k
 
-def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict,dict,dict]:
+def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
     slowdown_factors = {}
     locality_dict = {}
     dict_of_dfs = {}

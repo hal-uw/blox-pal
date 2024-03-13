@@ -50,8 +50,8 @@ class PMFirstPlacement(object):
         # gpu_df
 
         """
-        if not bool(self.alloc_order):   #get alloc order based on slowdown factors and locality penalty
-            self.alloc_order, self.dict_of_dfs = get_slowdown_factors(gpu_df)
+        if not bool(self.dict_of_dfs):   #get alloc order based on slowdown factors and locality penalty
+            self.dict_of_dfs = get_slowdown_factors(gpu_df)
         job_order = new_job_schedule["job_order"]
         scheduler = new_job_schedule.get("scheduler")
         jobs_to_terminate = list()
@@ -292,7 +292,7 @@ def _return_pmfirst_gpus(df_filt: pd.DataFrame, numGPUs_needed: int) -> list:
     Returns:
     list: [list of best GPUs to be allocated to jon ]
     """  
-    df_filt['locality_score'] = df_filt.groupby('Node_ID')['Node_ID'].transform('count')
+    df_filt['locality_score'] = df_filt.groupby(['sf','Node_ID'])['Node_ID'].transform('count')
     # Best-match locality score
     df_filt['locality_score'] = abs(df_filt['locality_score'] - numGPUs_needed)
     df_filt = df_filt.sort_values(by=['sf','locality_score'], ascending=[True, True])
@@ -426,11 +426,9 @@ def get_optimal_k(data: pd.DataFrame, outliers: pd.Series) -> int:
         #optimal_k += num_outliers
         return optimal_k
 
-def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict,dict,dict]:
+def get_slowdown_factors(gpu_df: pd.DataFrame) ->  dict:
     slowdown_factors = {}
-    locality_dict = {}
     dict_of_dfs = {}
-    order = {}
     df_copy = gpu_df.copy() # making a modifiable copy
 
     # Create a dictionary to store GPU indices grouped by Node_ID
@@ -491,72 +489,8 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict,dict,dict]:
         df_key = df_copy[['GPU_ID', 'Node_ID', 'sf']]
         dict_of_dfs[key] = df_key
         df_key.to_csv(f"gpudf_{key}.csv")
-        # df_groupedbynode = df_copy.groupby('Node_ID')
-        # df_groupedbysf   = df_copy.groupby('sf')
 
-        ##############################################################################################
-        # Order of traversing Locality x sf matrix
-        # Penalties for within and across allocations
-        lf_within        = 1.0
-        lf_across        = 1.0 # TODO could be a function of key/perfclass
-        sfs_list = df_copy['sf'].unique()
-
-        # Ordering of sfs vs locality for each class
-        # List of tuples specifying relative order of sf*lf
-        order[key] = []
-        for value in sfs_list:
-            # Order - (sf_val, locality_flag (1 = within, 0 across node), sf_val*lf_within/across)
-            order[key].append((value, 1, lf_within*value ))
-            order[key].append((value, 0, lf_across*value ))
-        
-        # sort order
-        order[key].sort(key=lambda x: x[2])
-
-        with open(f"order-details.csv", "a") as file:
-            file.write(key +" , "+ str(order[key])+ " ,\n")           
-
-        # Older definition of locality used for PMFirst 
-        # locality = {}
-        # for gpuid in range(len(gpu_df)):
-        #     if gpuid not in locality_dict.keys():
-        #         locallist = []
-        #         #get a list of all in-node neighbors of this GPU including itself
-        #         node_num = df_copy.loc[df_copy['GPU_ID'] == gpuid, 'Node_ID'].iloc[0]
-        #         neighbor_list = df_copy.loc[df_copy['Node_ID'] == node_num, 'GPU_ID'].to_list()
-        #         neighbor_list.remove(gpuid)
-
-        #         #use indices to produce per-gpu locality_info list
-        #         for neighbor in neighbor_list:
-        #             if cluster_nums[neighbor] == cluster_nums[gpuid]:
-        #                     locallist.append(neighbor)
-                
-        #         locality[gpuid] = locallist
-
-        # locality_dict[key] = locality
-
-        ################################################
-        # Extra code for plotting the clusters per class
-        # seaborn.set_style("whitegrid")
-        # seaborn.set_style("whitegrid", {"font.family": "serif"})
-        # seaborn.set_palette("colorblind")
-        # plt.figure(key)
-        # #plot = seaborn.boxplot(y="perf", hue="label", data=df_subset, width=0.5, showfliers=False, fliersize=5, linewidth=3, notch=False, palette="Set2")
-        # #plot = seaborn.stripplot(x="pwr", y="perf", hue="label", palette="Set2", linewidth=1, edgecolor="gray", alpha=.75, data=df_subset, s=10, jitter=0.1, size=0.3)
-        # plt.scatter(df_copy[f"PerfVar_{key}"],df_copy['GPU_ID'],c=df_copy['label'],cmap='Set1', edgecolors='black', alpha=0.8)
-
-        # # Annotate each point
-        # #for i, gpu_ind in enumerate(df_copy['GPU_ID']):
-        # #    plt.annotate(gpu_ind, (df_copy[f"PerfVar_{key}"].iloc[i], df_copy['GPU_ID'].iloc[i]))
-
-        # plt.scatter(centers, [0]*num_clusters , c='black', marker="x")
-        # plt.xlabel(f"Performance (ms)")
-        # plt.ylabel("GPU_ID ")
-        # plt.suptitle("Clustering by performance", y=1.05, fontsize=5)
-        # plt.title(f"Clustering for {key}", fontsize=10)
-        # plt.savefig(f"charts/perf-clustering-{key}.pdf")
-        ################################################
-
-    return order, dict_of_dfs
+    return dict_of_dfs
 
 
 
