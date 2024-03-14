@@ -163,7 +163,7 @@ class ResourceManagerComm(object):
             job_exit = False
             if not if_sim:
                 # added tracking
-                previous_metric = active_job_dict[job_id]["tracked_metrics"]
+                previous_metrics = active_job_dict[job_id]["tracked_metrics"]
                 metric_data_dict[job_id] = previous_metrics
                 for ipaddr in ipaddr_to_query:
                     ipaddr = f"{ipaddr}:{self.rpc_port}"

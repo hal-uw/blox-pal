@@ -64,6 +64,9 @@ class NodeManagerComm(object):
                 .strip()
             )
             ipaddr = self.ip_extract.findall(out)[0]
+            print(f"IP Address from interface name {ipaddr}")
+            logging.basicConfig(filename="/scratch1/08503/rnjain/blox-pal/ip_address_at_nm_client.txt", level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+            logging.info(f"IP Address from interface name {ipaddr}")
         # getting number of GPUs
         if os.path.isdir("/proc/driver/nvidia"):
             numgpus = (

@@ -4,19 +4,17 @@ import subprocess
 import pickle
 import fcntl
 import socket
-
-import socket
 import logging
 
 # Define logging configurations
-def setup_logging(rank):
-    log_file = f'/scratch1/08503/rnjain/blox-pal/debug_tacc_submit_log_{rank}.txt'  # Adjust the path as needed
+def setup_logging(node_id, rank):
+    log_file = f'/scratch1/08503/rnjain/blox-pal/debug_tacc_submit_log_{node_id}_{rank}.txt'
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Get scheduler ip address
 def get_ip_address():
     host_ip = socket.gethostbyname(socket.gethostname())
-    logging.info("IP address of this node:", host_ip)
+    logging.info(f"IP address of this node: {host_ip}")
     return host_ip 
 
 def run_command(command):
@@ -33,6 +31,9 @@ def run_command(command):
         return None
     
 rank = int(os.environ['SLURM_PROCID'])
+node_id = os.environ['SLURM_NODEID']
+setup_logging(node_id, rank)
+ip_addr = os.environ['SCHEDULER_NODE_IP_ADDR']
 
 # Launch redis server on every node
 if rank % 4 == 0: 
@@ -45,9 +46,11 @@ else:
     
 
 if rank == 1:
-    ip_addr = get_ip_address()
+    node_id = os.environ['SLURM_NODEID']
+    rank = int(os.environ['SLURM_PROCID'])
+    setup_logging(node_id, rank)
     logging.info("start scheduler begin")
-    subprocess.Popen('python /scratch1/08503/rnjain/blox-pal/fifo_scheduler_cluster.py --round-duration 30 --start-id-track 0 --stop-id-track 3 &', shell=True)
+    subprocess.Popen('nohup python -u /scratch1/08503/rnjain/blox-pal/fifo_scheduler_cluster.py --round-duration 30 --start-id-track 0 --stop-id-track 2 &', shell=True)
     logging.info("start scheduler end")
     time.sleep(5)
 else:
@@ -55,17 +58,25 @@ else:
 
 
 if rank % 4 == 2:
-    logging.info(f"start node manager begin {ip_address}") 
+    node_id = os.environ['SLURM_NODEID']
+    rank = int(os.environ['SLURM_PROCID'])
+    setup_logging(node_id, rank)
+    logging.info(f"Running node manager on node ID {node_id} and rank {rank} with IP address of scheduler {ip_addr}")
     subprocess.Popen(f"nohup python -u /scratch1/08503/rnjain/worker_node/blox-pal/node_manager.py --ipaddr {ip_addr} --interface eno1 > /scratch1/08503/rnjain/worker_node/blox-pal/node_manager_stdout_{rank}.txt 2>&1 &", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logging.info(f"start node manager end {ip_address}")
+    logging.info("Launched node_manager")
     time.sleep(30)
 else:
     time.sleep(30)
 
 
 if rank == 3:
+    node_id = os.environ['SLURM_NODEID']
+    rank = int(os.environ['SLURM_PROCID'])
+    setup_logging(node_id, rank)
+    logging.info("sleep to give time for nodes to register with scheduler")
+    time.sleep(30)
     logging.info("submit jobs begin") 
-    subprocess.Popen(f'nohup python -u /scratch1/08503/rnjain/worker_node/blox-pal/blox_exp/submit_modified.py > /pscratch/sd/s/songbian/submit_stdout_{rank}.txt 2>&1 &', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.Popen(f'nohup python -u /scratch1/08503/rnjain/worker_node/blox-pal/blox_exp/submit_modified.py > /scratch1/08503/rnjain/worker_node/blox-pal/submit_stdout_{rank}.txt 2>&1 &', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logging.info("submit jobs end") 
 else:
     pass

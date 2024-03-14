@@ -1,16 +1,11 @@
 #!/bin/bash
-#SBATCH -J cluster-test              # Job name
-#SBATCH -o debug/cluster.%j.out     # Name of stdout output file
-#SBATCH -e debug/cluster.%j.err     # Name of stderr error file
-#SBATCH -p rtx                  # Queue (partition) name
-#SBATCH -N 4                     # Total # of nodes
-#SBATCH -t 24:00:00              # Run time (hh:mm:ss)
-#SBATCH --mail-user=rnjain@wisc.edu
-#SBATCH --mail-type=all          # Send email at begin and end of job
+#SBATCH -J cluster_experiment
+#SBATCH -o cluster_experiment.%j.out
+#SBATCH -e cluster_experiment.%j.err
+#SBATCH -N 8
+#SBATCH -t 24:00:00
 
 # Load necessary modules
-module load tacc-apptainer
-module load cuda
 module load python
 module load anaconda3
 
@@ -56,26 +51,21 @@ main() {
     # Get scheduler node from SLURM_JOB_NODELIST
     read -a nodes <<< $(echo $SLURM_JOB_NODELIST | tr -d '[],')
     scheduler_node=${nodes[0]}
-    echo "Scheduler Node: ${scheduler_node}"
 
     # Activate conda environment
     activate_conda
-    echo "Launching redis-server on all nodes"
 
     # Launch Redis server on all nodes
     srun -N $SLURM_JOB_NUM_NODES -n $SLURM_JOB_NUM_NODES -l bash -c "$REDIS_PATH &"
 
-    echo "checking hostname - $(hostname) == scheduler node name"
     # Launch scheduler script on scheduler node
     if [[ $(hostname) == *$scheduler_node* ]]; then
-        echo "Launch scheduler script"
         launch_scheduler_script
         sleep $WAIT_TIME
     fi
 
     # Get IP address of scheduler node
     scheduler_ip=$(srun --nodes=1 --ntasks=1 -w $scheduler_node bash -c "$(typeset -f get_ip_address); get_ip_address")
-    echo "Scheduler IP address ${scheduler_ip}"
 
     # Launch worker scripts on worker nodes
     for ((i=1; i<${#nodes[@]}; i++)); do
@@ -86,17 +76,12 @@ main() {
         fi
     done
 
-    sleep $WAIT_TIME
-
     # Launch submit script on scheduler node
     if [[ $(hostname) == *$scheduler_node* ]]; then
         python -u $SUBMIT_SCRIPT > /scratch1/08503/rnjain/worker_node/blox-pal/submit_stdout.txt 2>&1 &
     fi
-
-    sleep $WAIT_TIME
 }
 
 # Execute main function
 main
-
 
