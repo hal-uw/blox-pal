@@ -88,6 +88,10 @@ class BloxManager(object):
         cluster_state.update(new_nodes)
         return new_nodes
 
+    def _get_avg_responsiveness(self, time_dict):
+        values = list(time_dict.values())
+        return sum(values) * 1.0 / len(values)
+
     def _get_avg_jct(self, time_dict):
         """
         Fetch the avg jct from the dict
@@ -100,6 +104,14 @@ class BloxManager(object):
             count += 1
 
         return jct_time / count
+
+    def _get_99th_jct(self, time_dict):
+        values = list(time_dict.values())
+        jct_list = []
+        for v in values:
+            jct_list.append(v[1] - v[0])
+        sorted_jct_list = sorted(jct_list)
+        return sorted_jct_list[int(len(sorted_jct_list) * 0.99)]
 
     def update_metrics(self, cluster_state, job_state):
         """
@@ -189,8 +201,60 @@ class BloxManager(object):
                                     self.time,
                                 ]
 
+
+            elif job_state.active_jobs[jid]["is_running"] == False:
+                # The following information is used for allox+
+                job_state.active_jobs[jid]["wait_time"] += time.time() - self.last_round_time
+
+            # if the job is preemption
+            if job_state.active_jobs[jid]["is_running"] == False:
+                if "previously_launched" in job_state.active_jobs[jid]:
+                    if (
+                            job_state.active_jobs.get(jid).get(
+                                "previously_launched"
+                            )
+                            == True
+                    ):
+                        if (
+                                jid >= job_state.job_ids_to_track[0]
+                                and jid <= job_state.job_ids_to_track[-1]
+                        ):
+                            # log the exit
+                            if job_state.active_jobs[jid]["simulation"]:
+                                job_state.job_responsiveness_stats[jid] += self.round_duration
+                            else:
+                                job_state.job_responsiveness_stats[jid] += time.time() - self.last_round_time
+
+        terminate_list_id = list()
+        terminate_ipaddr = list()
+        terminate_simulation = list()
+        print(f"\033[31m jid_to_terminate: {jid_to_terminate} \033[0m")
+        print("State of cluster in update_metrics {}".format(cluster_state.gpu_df))
         for jid in jid_to_terminate:
+            # find ipaddresses for corresponding jobs to terminate
+            running_ipddr = list(
+                set(_find_ipaddr_by_job_ids(jid, cluster_state.gpu_df))
+            )
+            print(f"\033[31m running_ipddr: {running_ipddr} \033[0m")
+            terminate_list_id.extend([jid] * len(running_ipddr))
+            terminate_ipaddr.extend(running_ipddr)
+            terminate_simulation.extend(
+                [False] * len(running_ipddr)
+            )
+            # mark the job that is running is false
+            job_state.active_jobs[jid]["is_running"] = False
+            job_state.active_jobs[jid]["rank_0_ip"] = None
+            # the job was suspended
+            job_state.active_jobs[jid]["suspended"] = 1
             job_state.active_jobs.pop(jid)
+            # delete GPU utilization
+            _free_gpu_by_jobid(jid, cluster_state.gpu_df)
+            # log the finished jobs
+            job_state.finished_job[jid] = 1
+
+        self.comm_node_manager.terminate_jobs(
+            terminate_list_id, terminate_ipaddr, terminate_simulation
+        )
 
         # update cluster use
         total_jobs, jobs_in_queue, jobs_running = _get_jobs_status(job_state)
@@ -219,38 +283,29 @@ class BloxManager(object):
             "allocation_dict": running_jobs_dict,
         }
 
-        #
-
-        # total_jobs, jobs_in_queue, jobs_running = _get_jobs_status(job_state)
-
-        # # gpu utilization
-
-        # free_gpus = len(
-        #     cluster_state.gpu_df[cluster_state.gpu_df["IN_USE"] == False][
-        #         "GPU_ID"
-        #     ].tolist()
-        # )
-
-        # gpu_demand = 0
-        # for jid in job_state.active_jobs:
-        #     gpu_demand += job_state.active_jobs[jid]["num_GPUs"]
-
-        # cluster_state.cluster_stats[self.time] = {
-        #     "total_jobs": total_jobs,
-        #     "jobs_in_queue": jobs_in_queue,
-        #     "jobs_running": jobs_running,
-        #     "free_gpus": free_gpus,
-        #     "gpu_demand": gpu_demand,
-        # }
-
-        # find the jobs have been finished
-        # print(
-        # "Not finished job {}".format(
-        # list(set(job_state.job_ids_to_track) - set(job_state.finished_job))
-        # )
-        # )
-
         if all(jid in job_state.finished_job for jid in job_state.job_ids_to_track):
+            avg_jct = self._get_avg_jct(job_state.job_completion_stats)
+            jct_99th = self._get_99th_jct(job_state.job_completion_stats)
+            avg_responsiveness = self._get_avg_responsiveness(job_state.job_responsiveness_stats)
+            with open("results/terminate_stat.txt", 'w') as f:
+                f.write(
+                    f"Scheduler: {self.scheduler_name}\n"
+                    f"Placement: {self.placement_name}\n"
+                    f"Acceptance Policy: {self.acceptance_policy}\n"
+                    f"Avg JCT: {round(avg_jct, 2)}\n"
+                    f"99th JCT: {round(jct_99th, 2)}\n"
+                    f"Avg responsiveness: {round(avg_responsiveness, 2)}\n"
+                )                
+            print(
+                f"Scheduler: {self.scheduler_name}, "
+                f"Placement: {self.placement_name}, "
+                f"Acceptance Policy: {self.acceptance_policy}, "
+                f"Avg JCT: {round(avg_jct, 2)}, "
+                f"99th JCT: {round(jct_99th, 2)}, "
+                f"Avg responsiveness: {round(avg_responsiveness, 2)}, "
+                f"Makespan: {makespan}"
+            )
+            print(f"simulator_time: {self.simulator_time}")
             with open(
                 f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_job_stats.json",
                 "w",
@@ -333,6 +388,7 @@ class BloxManager(object):
         terminate_ipaddr = list()
         terminate_simulation = list()
         print("Job IDs to terminate {}".format(jobs_to_terminate))
+        print("State of cluster before jobs to termiante in exec {}".format(cluster_state.gpu_df))
         for jid in jobs_to_terminate:
             # find ipaddresses for corresponding jobs to terminate
             running_ipddr = list(
@@ -351,19 +407,23 @@ class BloxManager(object):
             # mark corresponding GPUs on which the jobs are running as
             # available
             _free_gpu_by_jobid(jid, cluster_state.gpu_df)
+        print("State of cluster after jobs to termiante in exec {}".format(cluster_state.gpu_df))
 
         self.comm_node_manager.terminate_jobs(
             terminate_list_id, terminate_ipaddr, terminate_simulation
         )
 
         # jobs terminated
-
+        print(f"jobs_to_launch: {jobs_to_launch}")
         for jid in jobs_to_launch:
             gpus_to_launch = jobs_to_launch[jid]
             ipaddress_to_launch = _find_ipaddr_by_gpu_ids(
                 gpus_to_launch, cluster_state.gpu_df
             )
+            print(f"gpus_to_launch: {gpus_to_launch}")
+            print(f"ipaddress_to_launch: {ipaddress_to_launch}")
             local_gpu_ids = _find_local_gpu_id(gpus_to_launch, cluster_state.gpu_df)
+            print(f"local_gpu_ids: {local_gpu_ids}")
             self.comm_node_manager.launch_job(
                 jid, active_jobs.active_jobs[jid], local_gpu_ids, ipaddress_to_launch
             )

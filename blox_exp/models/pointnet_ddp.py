@@ -104,7 +104,7 @@ def benchmark_pointnet(model_name, batch_size):
         enumerator = bloxEnumerate(range(1000000), args.job_id)
         # Prevent total batch number < warmup+benchmark situation
         while True:
-            for inputs, targets in trainloader:
+           for inputs, targets in trainloader:
                 start = time.time()
                 optimizer.zero_grad()
                 targets = targets[:, 0]
@@ -135,7 +135,7 @@ def benchmark_pointnet(model_name, batch_size):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(filename=f"/dev/shm/training_worker_{args.job_id}_{args.rank}.log")
+    logging.basicConfig(filename=f"/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{args.job_id}_{args.rank}.log")
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     print("start")

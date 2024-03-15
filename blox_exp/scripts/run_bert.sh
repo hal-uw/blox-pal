@@ -2,19 +2,35 @@
 
 export CUDA_VISIBLE_DEVICES=$1
 
+GPUS_PER_NODE=$2
+# Change for multinode config
+MASTER_ADDR=localhost
+MASTER_PORT=$3
+NNODES=1
+NODE_RANK=0
+WORLD_SIZE=$(($GPUS_PER_NODE*$NNODES))
+
 CHECKPOINT_PATH=checkpoints/bert_pretrain
 VOCAB_FILE=/scratch1/08503/rnjain/data-files/bert/bert-large-uncased-vocab.txt
 DATA_PATH=/global/cfs/cdirs/m4207/song/my-bert_text_sentence
 
+DISTRIBUTED_ARGS="
+    --nproc_per_node $GPUS_PER_NODE \
+    --nnodes $NNODES \
+    --node_rank $NODE_RANK \
+    --master_addr $MASTER_ADDR \
+    --master_port $MASTER_PORT
+"
+
 BERT_ARGS="
-    --tensor-model-parallel-size $6 \
-    --pipeline-model-parallel-size $7 \
+    --tensor-model-parallel-size 1 \
+    --pipeline-model-parallel-size $4 \
     --num-layers 24 \
     --hidden-size 1024 \
     --num-attention-heads 16 \
     --seq-length 512 \
     --max-position-embeddings 512 \
-    --micro-batch-size $8 \
+    --micro-batch-size 16 \
     --global-batch-size 256 \
     --lr 0.0001 \
     --train-iters 1000000 \
@@ -26,10 +42,9 @@ BERT_ARGS="
     --clip-grad 1.0 \
     --fp16 \
     --no-async-tensor-model-parallel-allreduce \
-    --blox-setting \
-    --is-manual-pipeline $9 \
-    --manual-pipeline-list ${10} \
-    --job-id ${11}
+    --is-manual-pipeline True \
+    --manual-pipeline-list $5 \
+    --job-id $6
 "
 
 DATA_ARGS="
@@ -46,11 +61,7 @@ OUTPUT_ARGS="
     --eval-iters 10
 "
 
-python /global/homes/s/songbian/Megatron-Resource/pretrain_bert.py \
-    --master-ip-address=$2 \
-    --world-size=$3 \
-    --rank=$4 \
-    --master-ip-port=$5 \
+torchrun $DISTRIBUTED_ARGS /scratch1/08503/rnjain/Megatron-Resource/pretrain_bert.py \
     $BERT_ARGS \
     $DATA_ARGS \
     $OUTPUT_ARGS \

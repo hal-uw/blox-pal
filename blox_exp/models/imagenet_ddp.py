@@ -124,7 +124,7 @@ def benchmark_imagenet(model_name, batch_size):
 
 if __name__ == "__main__":
     # the candidate model is vgg16 vgg19 resnet18 resnet50 shufflenet_v2_x1_0
-    logging.basicConfig(filename=f"/dev/shm/training_worker_{args.job_id}_{args.rank}.log")
+    logging.basicConfig(filename=f"/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{args.job_id}_{args.rank}.log")
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     print("start")

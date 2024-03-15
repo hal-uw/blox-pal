@@ -1,3 +1,5 @@
+source ~/.bashrc
+singularity --version
 module load tacc-apptainer
 
 export CUDA_VISIBLE_DEVICES=$1

@@ -274,7 +274,7 @@ def benchmark_dcgan(model_name, batch_size):
 if __name__ == "__main__":
     # since this example shows a single process per GPU, the number of processes is simply replaced with the
     # number of GPUs available for training.
-    logging.basicConfig(filename=f"/dev/shm/training_worker_{args.job_id}_{args.rank}.log")
+    logging.basicConfig(filename=f"/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{args.job_id}_{args.rank}.log")
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     print("start")
