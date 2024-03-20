@@ -113,7 +113,7 @@ def main(args):
         prev_arrival_time = arrival_time
         start_time = init_time + arrival_time
         # ('job_id', 'num_gpus', 'submit_time', 'duration', 'model', 'batch_size')
-        row = [i + 1, scale_factor, start_time, run_time, model_name, batch_size]
+        row = [i, scale_factor, start_time, run_time, model_name, batch_size]
         rows.append(row)
 
     with open(output_file, 'w') as csvfile:
@@ -136,7 +136,7 @@ if __name__ == '__main__':
                         help='Random seed')
     parser.add_argument('-a', '--min_duration', type=float, default=0.2,
                         help='Minimum job duration in hours')
-    parser.add_argument('-b', '--max_duration', type=float, default=5,
+    parser.add_argument('-b', '--max_duration', type=float, default=1,
                         help='Maximum job duration in hours')
     parser.add_argument('-n', '--num_durations', type=int, default=100,
                         help='Number of possible job durations')
