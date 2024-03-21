@@ -27,6 +27,11 @@ sys.path.append(
 
 from blox_enumerator import bloxEnumerate
 
+# Define logging configurations
+def setup_logging(job_id, rank):
+    log_file = f'/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{job_id}_{rank}.log'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Benchmark settings
 parser = argparse.ArgumentParser(
     description="PyTorch DP Synthetic Benchmark",
@@ -216,11 +221,12 @@ def benchmark_dcgan(model_name, batch_size):
 
     def benchmark_step(job_id):
         iter_num = 0
+        total_attained_service = 0
         enumerator = bloxEnumerate(range(1000000), args.job_id)
         # Prevent total batch number < warmup+benchmark situation
         while True:
+            start = time.time()
             for i, data in enumerate(dataloader, 0):
-                start = time.time()
                 ############################
                 # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
                 ###########################
@@ -255,29 +261,36 @@ def benchmark_dcgan(model_name, batch_size):
                 optimizerG.step()
                 end = time.time()
                 iter_num += 1
+                total_attained_service += end - start
+                logging.info(f"iter_num: {iter_num}")
+                logging.info(f"job_id: {job_id}")
                 ictr, status = enumerator.__next__()
-                logger.info(f"ictr {ictr} status {status}")
+                logging.info(f"ictr {ictr} status {status}")
                 enumerator.push_metrics(
                     {"attained_service": end - start,
                      "per_iter_time": end - start,
                      "iter_num": 1}
                 )
+                start = time.time()
                 if status is False:
-                    logger.info("Exit")
+                    logging.info(f"Job Exit Notify {job_id}")
+                    enumerator.job_exit_notify()
+                    logging.info("Exit")
+                    torch.cuda.empty_cache()
                     sys.exit()
-                logger.info("Done iteration")
+                logging.info("Done iteration")
 
     print(f"==> Training {model_name} model with {batch_size} batchsize")
+    logging.info(f"==> Training {model_name} model with {batch_size} batchsize")
     benchmark_step(job_id)
 
 
 if __name__ == "__main__":
     # since this example shows a single process per GPU, the number of processes is simply replaced with the
     # number of GPUs available for training.
-    logging.basicConfig(filename=f"/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{args.job_id}_{args.rank}.log")
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    print("start")
+    # etup training worker log
+    setup_logging(args.job_id, args.rank)
+    logging.info("start DCGAN")
     model_name = "DCGAN"
     batch_size = args.batch_size
     benchmark_dcgan(model_name, batch_size)

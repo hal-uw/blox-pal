@@ -174,7 +174,9 @@ class ResourceManagerComm(object):
                         response = stub.GetMetrics(metric_request)
                     metric_data = json.loads(response.response)
                     # make sure we update and not overwrite
-                    if job_id in metric_data_dict:
+                    if job_id in metric_data_dict: 
+                        print("Job id {} Recieved Metric Data {}".format(job_id, metric_data))
+                        print("active_job_dict[job_id]: {}".format(active_job_dict[job_id]))                        
                         for key in metric_data:
                             if key == "attained_service":
                                 metric_data_dict[job_id][key] += metric_data[key]
@@ -191,7 +193,6 @@ class ResourceManagerComm(object):
 
                     else:
                         metric_data_dict[job_id] = metric_data
-
                     # Add previous data
                     print(
                         "Job id {} Aggregated Metric Data {}".format(
@@ -199,6 +200,15 @@ class ResourceManagerComm(object):
                         )
                     )
                     # Same job ids can be running at multiple ip addr
+
+                if "iter_num" in metric_data_dict[job_id]:
+                    if (
+                        metric_data_dict[job_id]["iter_num"]
+                        >= active_job_dict[job_id]["job_total_iteration"]
+                    ):
+                        job_exit = True
+                    if job_exit == True:
+                        metric_data_dict[job_id]['job_exit'] = True
             else:
                 # this is a simulation
                 # profile scaling by number of GPUs
@@ -235,6 +245,7 @@ class ResourceManagerComm(object):
                     total_iterations_in_round
                     + active_job_dict[job_id]["job_executed_iteration"]
                 )
+
                 if os.environ["sched_policy"] == "Optimus":
                     total_iteration_achieved = (
                         total_iterations_in_round

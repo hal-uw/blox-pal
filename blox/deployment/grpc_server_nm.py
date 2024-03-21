@@ -11,6 +11,11 @@ from concurrent import futures
 
 from typing import Tuple
 
+# Define logging configurations
+def setup_logging(log_name):
+    log_file = f'/scratch1/08503/rnjain/blox-pal/logs/job-runs/debug_{log_name}.log'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # sys.path.append(os.path.join(os.path.dirname(__file__), "grpc_stubs"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "grpc_stubs"))
 sys.path.append(os.path.dirname(__file__))
@@ -50,6 +55,7 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
                 while job_status != "exit":
                     time.sleep(1)
                     job_status = self.local_data_store.get_job_status(jid_to_test)
+                    print(f"Jid_to_test {jid_to_test} status {job_status}")
 
     def LaunchJob(self, request, context) -> rm_pb2.BooleanResponse:
         """
@@ -67,7 +73,14 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
         environment_variable_pairs = received_job["env_variables"]
 
         # check if all previous jobs have terminated
+        print("before ensure_terminate_status")
         self.ensure_terminate_status()
+        print("after ensure_terminate_status")
+        # Command to get GPU ID and memory usage
+        print("before launch")
+        gpu_memory_usage = get_gpu_process_memory_usage()
+        for info in gpu_memory_usage:
+            print(info)
         self.local_data_store.set_lease_status(received_job["job_id"], True)
         self.local_data_store.set_job_status(received_job["job_id"], "running")
         # os.environ["BLOX_JOB_ID"] = str(received_job["job_id"])
@@ -90,14 +103,19 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
             shell=True,
             env=environment_variable_pairs,
         )
-        # with open("job_file_db.txt", "w") as fopen:
-        # fopen.write(
-        # f"{command_to_run}  {' '.join(str(i) for i in launch_params)}  2>&1 | tee /dev/shm/job_{job_id}_local_gpu_{local_gpu_id}.log"
-        # )
+        with open("job_file_db.txt", "a") as fopen:
+            fopen.write(
+                f"Process ID: {proc.pid} Command: {command_to_run}  {' '.join(str(i) for i in launch_params)}  2>&1 | tee /dev/shm/job_{job_id}_local_gpu_{local_gpu_id}.log"
+            )
         # Debug code added
         # output, error = proc.communicate()
         # print(output, error)
         print(f"received_job {received_job}, node manager")
+        # Command to get GPU ID and memory usage
+        print("after launch")
+        gpu_memory_usage = get_gpu_process_memory_usage()
+        for info in gpu_memory_usage:
+            print(info)
         return rm_pb2.BooleanResponse(value=True)
 
     def TerminateJob(self, request, context) -> rm_pb2.BooleanResponse:
@@ -106,9 +124,13 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
         by blox iterator will terminate the job.
         """
         print("Called Terminate")
+        setup_logging("terminate_job_servernm")
         job_id_to_terminate = json.loads(request.response)["Job_ID"]
         print("Terminate Job {}".format(job_id_to_terminate))
+        logging.info(f"Got request to terminate Job {job_id_to_terminate}")
         self.job_terminate_ids.append(job_id_to_terminate)
+        print("Setting lease to false for jobs {}".format(self.job_terminate_ids))
+        logging.info("Setting lease to false for job {}".format(job_id_to_terminate))
         self.local_data_store.set_lease_status(job_id_to_terminate, False)
         return rm_pb2.BooleanResponse(value=True)
 
@@ -116,11 +138,17 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
         """
         Return metrics as requested by resource manager
         """
+        # Command to get GPU ID and memory usage
+        print("before get metrics")
+        gpu_memory_usage = get_gpu_process_memory_usage()
+        for info in gpu_memory_usage:
+            print(info)
         received_job = json.loads(request.response)
         job_data = self.local_data_store.get_job_metrics(received_job["Job_ID"])
         # data_to_send = dict()
         # data_to_send[received_job["Job_ID"]] = job_data
         print("Got Job metrics")
+        print("Job ID {}".format(received_job["Job_ID"]))
         print("Job data {}".format(job_data))
         job_data_request = rm_pb2.JsonResponse()
         job_data_request.response = json.dumps(job_data)
@@ -233,3 +261,30 @@ def start_server(nmserver: NMServer, node_manager_port: int) -> grpc.server:
     server.add_insecure_port(f"[::]:{node_manager_port}")
     server.start()
     return server
+
+
+def get_gpu_process_memory_usage():
+    # Command to list GPUs with indices
+    list_gpus_cmd = ['nvidia-smi', '--query-gpu=index,gpu_uuid', '--format=csv,noheader,nounits']
+    process = subprocess.Popen(list_gpus_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+    gpu_indices = output.decode('utf-8').strip().split('\n')
+    gpu_uuid_to_index = {}
+    for line in gpu_indices:
+        gpu_uuid_to_index[line.split(', ')[1]] = line.split(', ')[0]
+
+    # Command to get process info including the GPU UUID
+    query_cmd = ['nvidia-smi', '--query-compute-apps=gpu_uuid,pid,used_memory', '--format=csv,noheader,nounits']
+    process = subprocess.Popen(query_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+    process_lines = output.decode('utf-8').strip().split('\n')
+
+    gpu_info = []
+    for line in process_lines:
+        if not line:
+            continue
+        gpu_uuid, pid, used_memory = line.split(', ')
+        gpu_info.append({'GPU UUID': gpu_uuid ,'GPU Index': gpu_uuid_to_index[gpu_uuid], 'PID': pid, 'Used Memory': used_memory})
+
+    return gpu_info
+

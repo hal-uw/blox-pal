@@ -14,7 +14,7 @@ import itertools
 
 class PMFirstPlacement(object):
     def __init__(self, args):
-        # per class datafra`mes containing GPU_ID, Node_ID and sf for all GPUs
+        # per class dataframes containing GPU_ID, Node_ID and sf for all GPUs
         self.dict_of_dfs = {}
         pass
 
@@ -50,8 +50,9 @@ class PMFirstPlacement(object):
         # gpu_df
 
         """
-        if not bool(self.dict_of_dfs):   #get alloc order based on slowdown factors and locality penalty
-            self.dict_of_dfs = get_slowdown_factors(gpu_df)
+        if not bool(self.dict_of_dfs):
+            if not gpu_df.empty:   #get alloc order based on slowdown factors and locality penalty
+                self.dict_of_dfs = get_slowdown_factors(gpu_df)
         job_order = new_job_schedule["job_order"]
         scheduler = new_job_schedule.get("scheduler")
         jobs_to_terminate = list()
@@ -158,6 +159,7 @@ class PMFirstPlacement(object):
             # by decreasing preference
 
         if scheduler is None:
+            potential_preempt_dict = {}
             running_jobs = 0
             new_scheduled_jobs = 0
             jobs_to_schedule = 0     
@@ -169,6 +171,7 @@ class PMFirstPlacement(object):
                 job = active_jobs[jid]
 
                 if job["is_running"] == True:
+                    potential_preempt_dict[jid] = get_gpus_by_job_id(gpu_df, jid)
                     delete_job_by_id(gpu_df, jid)
                     jobs_to_terminate.append(jid)
 
@@ -227,6 +230,13 @@ class PMFirstPlacement(object):
                     # print(f"Jobs terminated {len(jobs_to_terminate)}")
                     # print(f"Jobs in queue {len(job_order)-idx}")
                     break
+
+            # if job id is a key in both potential_preempt_dict and job_to_launch
+            # AND the value list is exactly the same in both dictionaries, 
+            # remove jid from jobs_to_terminate
+            for job_id in potential_preempt_dict.keys() & job_to_launch.keys():
+                if sorted(potential_preempt_dict[job_id]) == sorted(job_to_launch[job_id]):
+                    jobs_to_terminate.remove(job_id)
 
             return (jobs_to_terminate, job_to_launch)
 

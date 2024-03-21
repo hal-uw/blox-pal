@@ -53,7 +53,7 @@ def _generate_duration(durations, rng):
 
 
 def main(args):
-    output_file = f"poisson_trace_{args.num_jobs}+{args.lam}.csv"
+    output_file = f"poisson_trace_{args.num_jobs}+{args.lam}-{args.max_duration}.csv"
 
     np.random.seed(args.seed)
     job_generator = random.Random()
@@ -71,9 +71,9 @@ def main(args):
     single_gpu_model_list = ['resnet50', 'vgg19', 'DCGAN', 'PointNet']
     multi_gpu_model_list = ['resnet50', 'DCGAN']
     all_model_list = single_gpu_model_list + multi_gpu_model_list
-    batch_size_range = [32, 64, 128]
-    image_base_bsz   = 32
-    dcgan_base_bsz   = 128
+    batch_size_range = [8, 16, 32, 64]
+    image_base_bsz   = 16
+    dcgan_base_bsz   = 64
 
     fields = ['job_id', 'num_gpus', 'submit_time', 'duration', 'model', 'batch_size']
     rows = []
@@ -91,13 +91,13 @@ def main(args):
             scale_indicator = 1
         else:
             raise ValueError("scale factor is not considered now.")
-        if model_name == 'DCGAN':
+        if model_name == 'DCGAN' or model_name == 'resnet50':
             batch_size = choice(batch_size_range)
         else:
             if scale_indicator == 0:
                 batch_size = image_base_bsz
             else:
-                batch_size = 128
+                batch_size = 64
         #batch_size = choice(batch_size_range)
         durations = np.linspace(
             args.min_duration, args.max_duration, args.num_durations
@@ -142,7 +142,7 @@ if __name__ == '__main__':
                         help='Number of possible job durations')
 
     args = parser.parse_args()
-    num_jobs_list = [50]
+    num_jobs_list = [25]
     lam_list = [1.0]
     for num_jobs in num_jobs_list:
         for lam in lam_list:

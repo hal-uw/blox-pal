@@ -47,66 +47,39 @@ class Job:
         )
     
     def init_launch(self):
-        default_placement = ''
-        split_strategy = ''
+        default_placement = ""
         for i in range(self.job_gpu_demand):
             default_placement += str(i) + ","
-            split_strategy += str(6) + ","
-        default_placement = default_placement[:-1]
-        split_strategy = split_strategy[:-1]
-        if self.job_model == 'Bert-Base':
-            self.launch_command = \
-                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_bert_base.sh"
+        if self.job_model == "Bert-Large":
+            if self.job_gpu_demand == 2:
+                split_strategy = "12,12"
+            elif self.job_gpu_demand == 4:
+                split_strategy = "6,6,6,6"
+            else:
+                raise ValueError("the job gpu demand is not considered now!!!")
+
+            self.launch_command = "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_bert.sh"
             self.launch_params = [
-                str(7000 + self.job_id),
-                str(1),
-                str(2),
-                str(16),
-                "True",
+                default_placement,
+                str(self.job_gpu_demand),
+                str(6000 + self.job_id),
+                str(self.job_gpu_demand),
                 split_strategy,
             ]
-        elif self.job_model == 'Bert-Large':
-            self.launch_command = \
-                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_bert_large.sh"
+        elif self.job_model == "GPT2-Medium":
+            if self.job_gpu_demand == 2:
+                split_strategy = "12,12"
+            elif self.job_gpu_demand == 4:
+                split_strategy = "6,6,6,6"
+            else:
+                raise ValueError("the job gpu demand is not considered now!!!")
+
+            self.launch_command = "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_gpt.sh"
             self.launch_params = [
-                str(7000 + self.job_id),
-                str(1),
-                str(4),
-                str(16),
-                "True",
-                split_strategy,
-            ]
-        elif self.job_model == 'GPT2':
-            self.launch_command = \
-                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_gpt.sh"
-            self.launch_params = [
-                str(7000 + self.job_id),
-                str(1),
-                str(2),
-                str(8),
-                "True",
-                split_strategy,
-            ]
-        elif self.job_model == 'GPT2-Medium':
-            self.launch_command = \
-                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_gpt_medium.sh"
-            self.launch_params = [
-                str(7000 + self.job_id),
-                str(1),
-                str(4),
-                str(8),
-                "True",
-                split_strategy,
-            ]
-        elif self.job_model == 'GPT2-XL':
-            self.launch_command = \
-                "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_gpt_xl.sh"
-            self.launch_params = [
-                str(7000 + self.job_id),
-                str(1),
-                str(8),
-                str(8),
-                "True",
+                default_placement,
+                str(self.job_gpu_demand),
+                str(6000 + self.job_id),
+                str(self.job_gpu_demand),
                 split_strategy,
             ]
         elif self.job_model == "resnet50" or self.job_model == "vgg19":

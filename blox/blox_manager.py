@@ -23,7 +23,6 @@ import deployment.grpc_client_rm as rm_client
 # from cluster_state import ClusterState
 # from job_state import JobState
 
-
 class BloxManager(object):
     """
     Implements the Blox bookkeeping interface, including accepting, scheduling and running jobs
@@ -46,6 +45,8 @@ class BloxManager(object):
             simulator_rpc_port=args.simulator_rpc_port,
         )
         self.time = 0
+        self.first_submit_time = None
+        self.last_round_time = 0
         self.terminate = False
         return None
 
@@ -90,7 +91,10 @@ class BloxManager(object):
 
     def _get_avg_responsiveness(self, time_dict):
         values = list(time_dict.values())
-        return sum(values) * 1.0 / len(values)
+        if len(values) > 0:
+            return sum(values) * 1.0 / len(values)
+        else:
+            return 0
 
     def _get_avg_jct(self, time_dict):
         """
@@ -139,14 +143,24 @@ class BloxManager(object):
             self.round_duration,
             job_state.active_jobs,
         )
-        print("Metric Data {}".format(metric_data))
-
         job_state.update_metrics(metric_data, self.round_duration)
         # prune jobs which have been completed
+        print("Metric Data {}".format(metric_data))
+        logging.info(f"Metric Data {metric_data}")
 
         jid_to_terminate = list()
         for jid in job_state.active_jobs:
             if job_state.active_jobs[jid]["is_running"] == True:
+                # Add job_exit for jobs whose num_iter updated above exceeds trace value
+                if "iter_num" in metric_data[jid]:
+                    if (
+                        metric_data[jid]["iter_num"]
+                        >= job_state.active_jobs[jid]["job_total_iteration"]
+                    ):
+                        logging.info(f"Marking {jid} for job_exit - Completed {metric_data[jid]['iter_num']} iterations")
+                        job_state.active_jobs[jid]["tracked_metrics"]["job_exit"] = True 
+                        
+                # Get completion stats - separate check because its possible job_exit is true withut iter_num condition
                 if jid in job_state.active_jobs:
                     if "tracked_metrics" in job_state.active_jobs[jid]:
                         if "job_exit" in job_state.active_jobs[jid]["tracked_metrics"]:
@@ -156,16 +170,16 @@ class BloxManager(object):
                                 .get("job_exit")
                                 == True
                             ):
+                                logging.info(f"Gathering completion stats {jid} = {time.time()} - {job_state.active_jobs[jid]['submit_time']}")
                                 # TODO: put a condition to check if need
                                 # plotting
                                 if (
                                     jid >= job_state.job_ids_to_track[0]
                                     and jid <= job_state.job_ids_to_track[-1]
                                 ):
-                                    # log the exit
                                     job_state.job_completion_stats[jid] = [
                                         job_state.active_jobs[jid]["submit_time"],
-                                        self.time,
+                                        time.time(),
                                     ]
 
                                     job_state.job_runtime_stats[jid] = copy.deepcopy(
@@ -196,17 +210,17 @@ class BloxManager(object):
                                 and jid <= job_state.job_ids_to_track[-1]
                             ):
                                 # log the exit
-                                job_state.job_responsiveness_stats[jid] = [
-                                    job_state.active_jobs[jid]["submit_time"],
-                                    self.time,
-                                ]
-
-
-            elif job_state.active_jobs[jid]["is_running"] == False:
-                # The following information is used for allox+
-                job_state.active_jobs[jid]["wait_time"] += time.time() - self.last_round_time
-
-            # if the job is preemption
+                                job_state.job_responsiveness_stats[jid] = (
+                                    self.last_round_time
+                                    - job_state.active_jobs[jid]["submit_time"]
+                                )
+            # elif job_state.active_jobs[jid]["is_running"] == False:
+            #     # The following information is used for allox+
+            #     if job_state.active_jobs[jid]["simulation"]:
+            #         job_state.active_jobs[jid]["wait_time"] += self.round_duration
+            #     else:
+            #         job_state.active_jobs[jid]["wait_time"] += time.time() - self.last_round_time
+            # if the job is preempted
             if job_state.active_jobs[jid]["is_running"] == False:
                 if "previously_launched" in job_state.active_jobs[jid]:
                     if (
@@ -228,18 +242,21 @@ class BloxManager(object):
         terminate_list_id = list()
         terminate_ipaddr = list()
         terminate_simulation = list()
-        print(f"\033[31m jid_to_terminate: {jid_to_terminate} \033[0m")
-        print("State of cluster in update_metrics {}".format(cluster_state.gpu_df))
+        print(f"jid_to_terminate: {jid_to_terminate}")
+        filtered_gpudf = cluster_state.gpu_df[['Node_ID','GPU_ID','Local_GPU_ID','IN_USE','JOB_IDS']]
+        print("State of cluster in update_metrics {}".format(filtered_gpudf))
+
+        logging.info(f"In Blox Manager: update_metrics : {jid_to_terminate} \n")
         for jid in jid_to_terminate:
             # find ipaddresses for corresponding jobs to terminate
             running_ipddr = list(
                 set(_find_ipaddr_by_job_ids(jid, cluster_state.gpu_df))
             )
-            print(f"\033[31m running_ipddr: {running_ipddr} \033[0m")
+            print(f"running_ipddr: {running_ipddr}")
             terminate_list_id.extend([jid] * len(running_ipddr))
             terminate_ipaddr.extend(running_ipddr)
             terminate_simulation.extend(
-                [False] * len(running_ipddr)
+                [job_state.active_jobs[jid]["simulation"]] * len(running_ipddr)
             )
             # mark the job that is running is false
             job_state.active_jobs[jid]["is_running"] = False
@@ -252,6 +269,8 @@ class BloxManager(object):
             # log the finished jobs
             job_state.finished_job[jid] = 1
 
+        print(f"Calling blox_manager terminate_jobs: {terminate_list_id}, terminate ipaddr {terminate_ipaddr}, terminate_simulation {terminate_simulation}\n")
+        logging.info(f"Calling blox_manager terminate_jobs: {terminate_list_id}, terminate ipaddr {terminate_ipaddr}, terminate_simulation {terminate_simulation}\n")
         self.comm_node_manager.terminate_jobs(
             terminate_list_id, terminate_ipaddr, terminate_simulation
         )
@@ -283,10 +302,16 @@ class BloxManager(object):
             "allocation_dict": running_jobs_dict,
         }
 
-        if all(jid in job_state.finished_job for jid in job_state.job_ids_to_track):
+        if any(jid in job_state.finished_job for jid in job_state.job_ids_to_track):
             avg_jct = self._get_avg_jct(job_state.job_completion_stats)
             jct_99th = self._get_99th_jct(job_state.job_completion_stats)
             avg_responsiveness = self._get_avg_responsiveness(job_state.job_responsiveness_stats)
+            if self.first_submit_time is not None:
+                makespan = time.time() - self.first_submit_time
+            else:
+                makespan = 0
+            if not os.path.exists("results"):
+                os.makedirs("results")
             with open("results/terminate_stat.txt", 'w') as f:
                 f.write(
                     f"Scheduler: {self.scheduler_name}\n"
@@ -295,7 +320,8 @@ class BloxManager(object):
                     f"Avg JCT: {round(avg_jct, 2)}\n"
                     f"99th JCT: {round(jct_99th, 2)}\n"
                     f"Avg responsiveness: {round(avg_responsiveness, 2)}\n"
-                )                
+                    f"Makespan: {makespan}"
+                )
             print(
                 f"Scheduler: {self.scheduler_name}, "
                 f"Placement: {self.placement_name}, "
@@ -305,9 +331,11 @@ class BloxManager(object):
                 f"Avg responsiveness: {round(avg_responsiveness, 2)}, "
                 f"Makespan: {makespan}"
             )
-            print(f"simulator_time: {self.simulator_time}")
+            print(f"simulator_time: {self.time}")
+
+            results_path = "/scratch1/08503/rnjain/blox-pal/results"
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_job_stats.json",
+                f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_job_stats.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.job_completion_stats))
@@ -316,41 +344,42 @@ class BloxManager(object):
                     f"Scheduler: {self.scheduler_name}, Acceptance Policy: {self.acceptance_policy}, Load: {self.load}, Avg JCT {avg_jct}"
                 )
                 json.dump(job_state.job_completion_stats, fopen)
-
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_cluster_stats.json",
+                f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_cluster_stats.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.cluster_stats))
                 json.dump(cluster_state.cluster_stats, fopen)
             # sys.exit(0)
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_run_time_stats.json",
+                f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_run_time_stats.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.cluster_stats))
                 json.dump(job_state.job_runtime_stats, fopen)
 
+            # with open(
+            #     f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_responsivness.json",
+            #     "w",
+            # ) as fopen:
+            #     # fopen.write(json.dumps(self.cluster_stats))
+            #     avg_responsiveness = self._get_avg_jct(
+            #         job_state.job_responsiveness_stats
+            #     )
+            #     print(
+            #         f"Scheduler: {self.scheduler_name}, Acceptance Policy: {self.acceptance_policy}, Load: {self.load}, Avg responsiveness {avg_responsiveness}"
+            #     )
+            #     json.dump(job_state.job_responsiveness_stats, fopen)
             with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_responsivness.json",
-                "w",
-            ) as fopen:
-                # fopen.write(json.dumps(self.cluster_stats))
-                avg_responsiveness = self._get_avg_jct(
-                    job_state.job_responsiveness_stats
-                )
-                print(
-                    f"Scheduler: {self.scheduler_name}, Acceptance Policy: {self.acceptance_policy}, Load: {self.load}, Avg responsiveness {avg_responsiveness}"
-                )
-                json.dump(job_state.job_responsiveness_stats, fopen)
-            with open(
-                f"{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_custom_metrics.json",
+                f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_custom_metrics.json",
                 "w",
             ) as fopen:
                 # fopen.write(json.dumps(self.cluster_stats))
                 json.dump(job_state.custom_metrics, fopen)
 
+        if all(jid in job_state.finished_job for jid in job_state.job_ids_to_track):
             self.terminate = True
+
         return None
 
     def pop_wait_queue(self, is_simulation: bool):
@@ -384,11 +413,12 @@ class BloxManager(object):
         Return:
           None
         """
+        setup_logging("exec_jobs")
         terminate_list_id = list()
         terminate_ipaddr = list()
         terminate_simulation = list()
+        logging.info(f"In blox_manager.exec_jobs - jobs_to_terminate = {jobs_to_terminate}")
         print("Job IDs to terminate {}".format(jobs_to_terminate))
-        print("State of cluster before jobs to termiante in exec {}".format(cluster_state.gpu_df))
         for jid in jobs_to_terminate:
             # find ipaddresses for corresponding jobs to terminate
             running_ipddr = list(
@@ -407,8 +437,9 @@ class BloxManager(object):
             # mark corresponding GPUs on which the jobs are running as
             # available
             _free_gpu_by_jobid(jid, cluster_state.gpu_df)
-        print("State of cluster after jobs to termiante in exec {}".format(cluster_state.gpu_df))
-
+        filtered_columns = cluster_state.gpu_df[['GPU_ID', 'Local_GPU_ID', 'IN_USE', 'JOB_IDS']]
+        print("State of cluster after jobs to terminate in exec {}".format(filtered_columns))
+        logging.info(f"List of jobs to terminate: {terminate_list_id}")
         self.comm_node_manager.terminate_jobs(
             terminate_list_id, terminate_ipaddr, terminate_simulation
         )

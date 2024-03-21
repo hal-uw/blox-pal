@@ -15,10 +15,31 @@ import rm_pb2 as rm_pb2
 import rm_pb2_grpc as rm_pb2_grpc
 
 
+def _get_perfclass(new_job):
+    if "perfclass" in new_job and (new_job.get("perfclass")) is not None:
+        return new_job["perfclass"]
+    else:  
+        model = new_job["job_model"]
+        if model == "vgg19":
+            return "classC"
+        elif model == "resnet50": 
+            return "classA"
+        elif model == "DCGAN": 
+            return "classB"
+        elif model == "PointNet": 
+            return "classD"
+        elif model == "Bert-Large": 
+            return "classB"
+        elif model == "GPT2-Medium":
+            return "classB"
+        else:
+            return "classA" #if unknown class, we will assume worst variabilty
+
 def preprocess_job(new_job):
     new_job["exclusive"] = 1
     new_job["submit_time"] = new_job["job_arrival_time"]
     new_job["num_GPUs"] = new_job["job_gpu_demand"]
+    new_job["perfclass"] = _get_perfclass(new_job)
     return new_job
 
 
@@ -29,7 +50,7 @@ def main(scheduler_ipaddr):
         scheduler_ipaddr: IP-Address of the scheduler code.
     """
     df = pd.read_csv(
-        filepath_or_buffer="/scratch1/08503/rnjain/blox-pal/blox_exp/workload/real_debug_25+1.0.csv",
+        filepath_or_buffer="/scratch1/08503/rnjain/blox-pal/blox_exp/workload/poisson_trace_25+1.0-1.csv",
         dtype={
             "job_id": int,
             "num_gpus": int,

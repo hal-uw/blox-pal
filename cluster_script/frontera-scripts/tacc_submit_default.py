@@ -22,23 +22,23 @@ logging.info("before start database")
 subprocess.Popen('/scratch1/08503/rnjain/blox-pal/redis-7.2.4/src/redis-server &', shell=True)
 logging.info("after start database")
 
-if rank == 0:
+if rank == 0 and node_id == 0:
     logging.info("Launching scheduler: check /scratch1/08503/rnjain/blox-pal/scheduler_stdout.txt")
-    subprocess.Popen('nohup python -u /scratch1/08503/rnjain/blox-pal/fifo_scheduler_cluster.py --round-duration 30 --start-id-track 0 --stop-id-track 2 > /scratch1/08503/rnjain/blox-pal/scheduler_stdout.txt 2>&1 &', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+    subprocess.Popen('nohup python -u /scratch1/08503/rnjain/blox-pal/fifo_pal.py --round-duration 360 --start-id-track 0 --stop-id-track 49 > /scratch1/08503/rnjain/blox-pal/scheduler_stdout.txt 2>&1 &', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
     time.sleep(3)
 else:
     time.sleep(5)
     
-logging.info(f"Running node manager on node ID {node_id} and rank {rank} with {ip_addr} IP address of scheduler")
-subprocess.Popen(f"nohup python -u /scratch1/08503/rnjain/worker_node/blox-pal/node_manager.py --ipaddr {ip_addr} --interface eno1 > /scratch1/08503/rnjain/worker_node/blox-pal/node_manager_stdout_{rank}.txt 2>&1 &", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-logging.info("Launched node_manager")
-logging.info("sleep to give time for nodes to register with scheduler")
-time.sleep(30)
+#logging.info(f"Running node manager on node ID {node_id} and rank {rank} with {ip_addr} IP address of scheduler")
+#subprocess.Popen(f"nohup python -u /scratch1/08503/rnjain/worker_node/blox-pal/node_manager.py --ipaddr {ip_addr} --interface eno1 > /scratch1/08503/rnjain/worker_node/blox-pal/node_manager_stdout_{rank}.txt 2>&1 &", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#logging.info("Launched node_manager")
+#logging.info("sleep to give time for nodes to register with scheduler")
+#time.sleep(30)
 
-if rank == 0:
-    logging.info("submit jobs begin") 
-    subprocess.Popen(f'nohup python -u /scratch1/08503/rnjain/worker_node/blox-pal/blox_exp/submit_modified.py > /scratch1/08503/rnjain/worker_node/blox-pal/submit_stdout_{rank}.txt 2>&1 &', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logging.info("submit jobs end") 
+#if rank == 0:
+#    logging.info("submit jobs begin") 
+#    subprocess.Popen(f'nohup python -u /scratch1/08503/rnjain/worker_node/blox-pal/blox_exp/submit_modified.py > /scratch1/08503/rnjain/worker_node/blox-pal/submit_stdout_{rank}.txt 2>&1 &', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#    logging.info("submit jobs end") 
 
 while True:
     pass

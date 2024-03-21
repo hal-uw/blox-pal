@@ -1,5 +1,4 @@
 job_id,num_gpus,submit_time,duration,model,batch_size
 1,1,16,5,vgg19,32
-2,1,72,5,DCGAN,128
-3,1,115,5,resnet50,32
-4,2,123,5,PointNet,32
+2,1,72,5,DCGAN,1284
+3,2,123,5,PointNet,32

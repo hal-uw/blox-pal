@@ -28,6 +28,11 @@ from workloads.lucid.pointnet.dataset import ShapeNetDataset
 from workloads.lucid.pointnet.pointnet import PointNetCls, feature_transform_regularizer
 from blox_enumerator import bloxEnumerate
 
+def setup_logging(job_id, rank):
+    log_file = f'/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{job_id}_{rank}.log'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
 # Benchmark settings
 parser = argparse.ArgumentParser(
     description="PyTorch Profile pointnet",
@@ -67,17 +72,21 @@ def benchmark_pointnet(model_name, batch_size):
     job_id = args.job_id
 
     # initialize the process group
+    logging.info(f"before init_process_group")
     dist.init_process_group(
         backend="nccl",
         init_method=f"tcp://{args.master_ip_address}:{args.master_ip_port}",
         rank=args.rank,
         world_size=args.world_size
     )
+    logging.info(f"after init_process_group")
 
     # specify dataset
+    logging.info(f"before ShapeNetDataset")
     trainset = ShapeNetDataset(
         root=args.data_dir, classification=True, npoints=args.num_points
     )
+    logging.info(f"after ShapeNetDataset")
     trainsampler = torch.utils.data.distributed.DistributedSampler(trainset)
     trainloader = torch.utils.data.DataLoader(
         trainset,
@@ -103,9 +112,10 @@ def benchmark_pointnet(model_name, batch_size):
         iter_num = 0
         enumerator = bloxEnumerate(range(1000000), args.job_id)
         # Prevent total batch number < warmup+benchmark situation
+        total_attained_service = 0
+        start = time.time()
         while True:
-           for inputs, targets in trainloader:
-                start = time.time()
+            for inputs, targets in trainloader:
                 optimizer.zero_grad()
                 targets = targets[:, 0]
                 inputs = inputs.transpose(2, 1)
@@ -118,26 +128,30 @@ def benchmark_pointnet(model_name, batch_size):
                 optimizer.step()
                 end = time.time()
                 iter_num += 1
+                total_attained_service += end - start
                 ictr, status = enumerator.__next__()
-                logger.info(f"ictr {ictr} status {status}")
+                logging.info(f"ictr {ictr} status {status}")
                 enumerator.push_metrics(
                     {"attained_service": end - start,
                      "per_iter_time": end - start,
                      "iter_num": 1}
                 )
+                start = time.time()
                 if status is False:
-                    logger.info("Exit")
+                    logging.info("Job Exit Notify")
+                    enumerator.job_exit_notify()
+                    logging.info("Exit")
+                    torch.cuda.empty_cache()
                     sys.exit()
-                logger.info("Done iteration")
+                logging.info("Done iteration")
 
     print(f"==> Training {model_name} model with {batch_size} batchsize")
+    logging.info(f"==> Training {model_name} model with {batch_size} batchsize")
     benchmark_step(job_id)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(filename=f"/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{args.job_id}_{args.rank}.log")
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    setup_logging(args.job_id, args.rank)
     print("start")
     model_name = "PointNet"
     batch_size = args.batch_size

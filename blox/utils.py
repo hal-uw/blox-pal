@@ -8,6 +8,9 @@ from job_state import JobState
 
 from typing import Tuple, List
 
+def setup_logging():
+    log_file = f'/scratch1/08503/rnjain/blox-pal/logs/utils-num-iteration.log'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_metrics(
     blr: BloxManager, cluster_state: ClusterState, job_state: JobState
@@ -54,6 +57,7 @@ def prune_jobs_based_on_runtime(
     """
     jid_to_terminate = list()
 
+    setup_logging()
     for jid in job_state.active_jobs:
         if job_state.active_jobs[jid]["is_running"] == True:
             if jid in job_state.active_jobs:
@@ -73,10 +77,12 @@ def prune_jobs_based_on_runtime(
                         )
                     else:
                         num_iterations = 0
-                    if "num_total_iterations" in job_state.active_jobs[jid]:
+                    if "job_total_iteration" in job_state.active_jobs[jid]:
+                        total_iterations_in_trace = job_state.active_jobs[jid]['job_total_iteration']
+                        logging.info(f"job_total_iteration = {total_iterations_in_trace}, num_iterations = {num_iterations}")
                         if (
                             num_iterations
-                            > job_state.active_jobs[jid]["num_total_iterations"]
+                            > job_state.active_jobs[jid]["job_total_iteration"]
                         ):
                             # TODO: put a condition to check if need
                             # plotting
@@ -104,6 +110,8 @@ def prune_jobs_based_on_runtime(
 
                             jid_to_terminate.append(jid)
                             # delete GPU utilization
+                    else:
+                        logging.info("job_total_iteration not found!!!")
     return jid_to_terminate
 
 
@@ -398,14 +406,13 @@ def collect_cluster_job_metrics(
         "gpu_demand": gpu_demand,
     }
 
-
 def track_finished_jobs(
     job_state: JobState, cluster_state: ClusterState, blr: BloxManager
 ) -> bool:
     """
     Once the jobs are finished exit from the trainer
     """
-    # print("Finished jobs {}".format(soed([jid for jid in job_state.finished_job])))
+    #print("Finished jobs {}".format(soed([jid for jid in job_state.finished_job])))
     print(
         "Not finished job {}".format(
             list(set(job_state.job_ids_to_track) - set(job_state.finished_job))

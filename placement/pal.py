@@ -52,8 +52,10 @@ class PALPlacement(object):
         # gpu_df
 
         """
-        if not bool(self.alloc_order):   #get alloc order based on slowdown factors and locality penalty
-            self.alloc_order, self.dict_of_dfs = get_slowdown_factors(gpu_df)
+        if not bool(self.alloc_order):
+            if not gpu_df.empty:   #get alloc order based on L-V Matrix only if there are GPUs registered
+                self.alloc_order, self.dict_of_dfs = get_slowdown_factors(gpu_df)
+        gpu_df.to_csv("/scratch1/08503/rnjain/blox-pal/logs/job-runs/gpu_df.csv")
         job_order = new_job_schedule["job_order"]
         scheduler = new_job_schedule.get("scheduler")
         jobs_to_terminate = list()
@@ -160,48 +162,56 @@ class PALPlacement(object):
             # by decreasing preference
 
         if scheduler is None:
+            potential_preempt_dict = {}
             running_jobs = 0
             new_scheduled_jobs = 0
             jobs_to_schedule = 0     
 
-            # Don't care about relocation penalties
-            # Clear all allocations for all currently running jobs
-            for item in job_order:
-                jid, _ = item
-                job = active_jobs[jid]
-
-                if job["is_running"] == True:
-                    delete_job_by_id(gpu_df, jid)
-                    jobs_to_terminate.append(jid)
-
-            # Cut off job queue at cluster size
-            cluster_size = len(gpu_df)
-            num_gpus_per_node = get_num_gpus_per_node(gpu_df)
-            count_jobs = 0
-            sum_gres_demand = 0
-            cutoff_LoT = []
-
-            for job_data in job_order:
-                jid_temp, _ = job_data
-                job_temp = active_jobs[jid_temp]
-                sum_gres_demand += job_temp["num_GPUs"]
-                if sum_gres_demand > cluster_size:
-                    break
-                job_class = job_temp["perfclass"]
-                cutoff_LoT.append((jid_temp,job_class))
-
-            # Sort them by perfclass
-            custom_order = {'classA': 0, 'classB': 1, 'classC': 2, 'classD': 3}
-            sorted_cutoff_LoT = sorted(cutoff_LoT, key=lambda x: custom_order.get(x[1], len(custom_order)))   
-            sorted_job_ids = [job[0] for job in sorted_cutoff_LoT]
-
-            mod_job_order = sorted_job_ids
-
-            # Next, add elements from original_list that are not in sorted_job_ids
-            for item in job_order:
-                jid, _ = item
-                if jid not in sorted_job_ids:
-                    mod_job_order.append(jid)
+            if len(job_order) > 0 and len(gpu_df) > 0:
+                # Don't care about relocation penalties
+                # Clear all allocations for all currently running jobs
+                potential_preempt_dict = {}
+                for item in job_order:
+                    jid, _ = item
+                    job = active_jobs[jid]
+    
+                    if job["is_running"] == True:
+                        potential_preempt_dict[jid] = get_gpus_by_job_id(gpu_df, jid)
+                        delete_job_by_id(gpu_df, jid)
+                        jobs_to_terminate.append(jid)
+    
+                # Cut off job queue at cluster size
+                cluster_size = len(gpu_df)
+                num_gpus_per_node = 0
+                if cluster_size > 0:
+                    num_gpus_per_node = get_num_gpus_per_node(gpu_df)
+                count_jobs = 0
+                sum_gres_demand = 0
+                cutoff_LoT = []
+    
+                for job_data in job_order:
+                    jid_temp, _ = job_data
+                    job_temp = active_jobs[jid_temp]
+                    sum_gres_demand += job_temp["num_GPUs"]
+                    if sum_gres_demand > cluster_size:
+                        break
+                    job_class = job_temp["perfclass"]
+                    cutoff_LoT.append((jid_temp,job_class))
+    
+                # Sort them by perfclass
+                custom_order = {'classA': 0, 'classB': 1, 'classC': 2, 'classD': 3}
+                sorted_cutoff_LoT = sorted(cutoff_LoT, key=lambda x: custom_order.get(x[1], len(custom_order)))   
+                sorted_job_ids = [job[0] for job in sorted_cutoff_LoT]
+    
+                mod_job_order = sorted_job_ids
+    
+                # Next, add elements from original_list that are not in sorted_job_ids
+                for item in job_order:
+                    jid, _ = item
+                    if jid not in sorted_job_ids:
+                        mod_job_order.append(jid)
+            else:
+                mod_job_order = job_order
 
             # with open(f"compare-job-queues.csv", "a") as file:
             #     file.write("\""+str(sorted_cutoff_LoT)+"\"," + str(mod_job_order) + " \n")            
@@ -229,6 +239,13 @@ class PALPlacement(object):
                     # print(f"Jobs terminated {len(jobs_to_terminate)}")
                     # print(f"Jobs in queue {len(job_order)-idx}")
                     break
+            
+            # if job id is a key in both potential_preempt_dict and job_to_launch
+            # AND the value list is exactly the same in both dictionaries, 
+            # remove jid from jobs_to_terminate
+            for job_id in potential_preempt_dict.keys() & job_to_launch.keys():
+                if sorted(potential_preempt_dict[job_id]) == sorted(job_to_launch[job_id]):
+                    jobs_to_terminate.remove(job_id)
 
             return (jobs_to_terminate, job_to_launch)
 
@@ -383,6 +400,11 @@ def find_alloc_by_job(gpu_df: pd.DataFrame, job_id: int) -> dict:
         .to_dict()
     )
 
+def get_gpus_by_job_id(gpu_df: pd.DataFrame, job_id: int):
+    # Filter the DataFrame based on JOB_ID and IN_USE
+    filtered_df = gpu_df[(gpu_df['JOB_IDS'] == job_id) & (gpu_df['IN_USE'] == True)]
+    gpu_ids = filtered_df['GPU_ID'].tolist()
+    return gpu_ids
 
 def find_free_GPUs_by_type(gpu_df: pd.DataFrame, gpu_type: str) -> dict:
     """
@@ -457,7 +479,12 @@ def _remove_outliers(gpu_df: pd.DataFrame, threshold=3):
 
 
 def get_optimal_k(data: pd.DataFrame, outliers: pd.Series) -> int:
-    data_no_outliers = data[~outliers]
+    print(data)
+    print(outliers)
+    if outliers.empty:
+        data_no_outliers = data
+    else: 
+        data_no_outliers = data[~outliers]
     silhouette_scores = []
     for k in range(2, 11):
         kmeans = KMeans(n_clusters=k, init='k-means++', algorithm='full', random_state=1)
@@ -499,13 +526,19 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
         temparr = df_copy[[f"PerfVar_{key}"]].values
         outliers = identify_outliers(gpu_df[f"PerfVar_{key}"])
 
+        if key == "classA":
+            num_clusters = 4
+        else:
+            num_clusters = 2
+
+        # print(temparr)
         ##############################################################################################
         # K means clustering to get sfs
         #get number of clusters without outliers
-        K1 = get_optimal_k(temparr, outliers)
+        #K1 = get_optimal_k(temparr, outliers)
 
-        K2 = outliers.sum() # Number of outliers 
-        num_clusters = K1 + K2
+        #K2 = outliers.sum() # Number of outliers 
+        #num_clusters = K1 + K2
 
         # if outliers.any():
         #     #identify ideal number of clusters for outlier data alone

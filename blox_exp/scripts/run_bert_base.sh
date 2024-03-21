@@ -7,11 +7,9 @@ VOCAB_FILE=/scratch1/08503/rnjain/data-files/bert/bert-large-uncased-vocab.txt
 DATA_PATH=scratch1/08503/rnjain/data-files/bert/my-bert_text_sentence
 
 BERT_ARGS="
-    --tensor-model-parallel-size $6 \
-    --pipeline-model-parallel-size $7 \
-    --num-layers 24 \
-    --hidden-size 1024 \
-    --num-attention-heads 16 \
+    --num-layers 12 \
+    --hidden-size 768 \
+    --num-attention-heads 12 \
     --seq-length 512 \
     --max-position-embeddings 512 \
     --micro-batch-size $8 \
@@ -25,7 +23,6 @@ BERT_ARGS="
     --lr-warmup-fraction .01 \
     --clip-grad 1.0 \
     --fp16 \
-    --no-async-tensor-model-parallel-allreduce \
     --blox-setting \
     --is-manual-pipeline $9 \
     --manual-pipeline-list ${10} \
