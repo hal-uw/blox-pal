@@ -117,7 +117,7 @@ def benchmark_imagenet(model_name, batch_size):
                 per_iter_time = end - start 
                 logging.info(f"per_iter_time = {per_iter_time}")
                 start = time.time()
-                if iter_num >= 250:
+                if iter_num >= 1000:
                     logging.info("Job exit notify")
                     torch.cuda.empty_cache()
                     sys.exit()

@@ -103,10 +103,6 @@ class NMServer(nm_pb2_grpc.NMServerServicer):
             shell=True,
             env=environment_variable_pairs,
         )
-        with open("job_file_db.txt", "a") as fopen:
-            fopen.write(
-                f"Process ID: {proc.pid} Command: {command_to_run}  {' '.join(str(i) for i in launch_params)}  2>&1 | tee /dev/shm/job_{job_id}_local_gpu_{local_gpu_id}.log"
-            )
         # Debug code added
         # output, error = proc.communicate()
         # print(output, error)
