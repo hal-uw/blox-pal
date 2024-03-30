@@ -55,7 +55,7 @@ class PALPlacement(object):
         if not bool(self.alloc_order):
             if not gpu_df.empty:   #get alloc order based on L-V Matrix only if there are GPUs registered
                 self.alloc_order, self.dict_of_dfs = get_slowdown_factors(gpu_df)
-        gpu_df.to_csv("/scratch1/08503/rnjain/blox-pal/logs/job-runs/gpu_df.csv")
+        gpu_df.to_csv("/scratch1/08503/rnjain/blox-pal/logs/pal-runs/gpu_df.csv")
         job_order = new_job_schedule["job_order"]
         scheduler = new_job_schedule.get("scheduler")
         jobs_to_terminate = list()

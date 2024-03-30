@@ -146,7 +146,7 @@ class PackedSPlacement(object):
         # first check if enough GPUs are available for this job
         all_free_gpus = sum(free_gpus.values(), [])
 
-        if len(all_free_gpus) >= numGPUs_needed:
+        if len(all_free_gpus) > numGPUs_needed:
             node_gpu_counts = {k:len(list(v)) for k,v in free_gpus.items()}
             list_free_gpus = collections.Counter(node_gpu_counts)
             while len(gpus_for_job) < numGPUs_needed:

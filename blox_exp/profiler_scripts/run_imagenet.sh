@@ -4,7 +4,7 @@ conda init bash
 source ~/.bashrc
 conda activate pollux
 
-python3 /scratch1/08503/rnjain/blox-pal/blox_exp/models/imagenet_ddp.py \
+python3 /scratch1/08503/rnjain/blox-pal/blox_exp/profilers/imagenet_ddp.py \
     --master-ip-address=$2 \
     --world-size=$3 \
     --rank=$4 \

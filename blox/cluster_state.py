@@ -6,6 +6,7 @@ import json
 import logging
 import argparse
 import pandas as pd
+import numpy as np
 import time
 import random
 from concurrent import futures
@@ -126,20 +127,19 @@ class ClusterState(object):
             perfclasses = json.load(json_file)
 
         for key in perfclasses:
-            df_new = pd.read_csv(perfclasses[key])
-
-            # need to ensure that we sample at most 1 entry per unique GPU 
-            df_sliced = df_new.loc[df_new.groupby('uuid')['perf'].idxmax()]
+            df_sliced = pd.read_csv(perfclasses[key])
 
             median_value = df_sliced['perf'].median()
-
             df_sliced['perf'] = df_sliced['perf'].apply(lambda x: x / median_value)
 
-            gpu_row = df_sliced[df_sliced['uuid'] == gpu_uuid]
-
-            if not gpu_row.empty:
-                norm_perfvar[key] = gpu_row['perf'].iloc[0]
+            perf_lists = df_sliced.groupby('uuid')['perf'].apply(list) # same uuid can have multiple entries
+            median_perfs = perf_lists.apply(lambda x: np.median(x))
+            median_perfs_dict = median_perfs.to_dict()
+            
+            if gpu_uuid in median_perfs_dict.keys():
+                norm_perfvar[key] = median_perfs_dict[gpu_uuid]
             else:
+                logging.info(f"Getting slowdown factors: randomly sampled for UUID {gpu_uuid}")
                 #randomly sample df_sliced['perf'] value from dataframe
                 norm_perfvar[key] = random.choice(df_sliced['perf'])
 

@@ -71,9 +71,7 @@ def main(args):
     single_gpu_model_list = ['resnet50', 'vgg19', 'DCGAN', 'PointNet']
     multi_gpu_model_list = ['resnet50', 'DCGAN']
     all_model_list = single_gpu_model_list + multi_gpu_model_list
-    batch_size_range = [8, 16, 32, 64]
-    image_base_bsz   = 16
-    dcgan_base_bsz   = 64
+    batch_size_range = [32, 64, 128]
 
     fields = ['job_id', 'num_gpus', 'submit_time', 'duration', 'model', 'batch_size']
     rows = []
@@ -91,14 +89,14 @@ def main(args):
             scale_indicator = 1
         else:
             raise ValueError("scale factor is not considered now.")
-        if model_name == 'DCGAN' or model_name == 'resnet50':
-            batch_size = choice(batch_size_range)
-        else:
-            if scale_indicator == 0:
-                batch_size = image_base_bsz
-            else:
-                batch_size = 64
-        #batch_size = choice(batch_size_range)
+        # if model_name == 'DCGAN' or model_name == 'resnet50':
+        #     batch_size = choice(batch_size_range)
+        # else:
+        #     if scale_indicator == 0:
+        #         batch_size = image_base_bsz
+        #     else:
+        #         batch_size = 64
+        batch_size = choice(batch_size_range)
         durations = np.linspace(
             args.min_duration, args.max_duration, args.num_durations
         )
@@ -136,13 +134,13 @@ if __name__ == '__main__':
                         help='Random seed')
     parser.add_argument('-a', '--min_duration', type=float, default=0.2,
                         help='Minimum job duration in hours')
-    parser.add_argument('-b', '--max_duration', type=float, default=1,
+    parser.add_argument('-b', '--max_duration', type=float, default=2,
                         help='Maximum job duration in hours')
     parser.add_argument('-n', '--num_durations', type=int, default=100,
                         help='Number of possible job durations')
 
     args = parser.parse_args()
-    num_jobs_list = [25]
+    num_jobs_list = [50]
     lam_list = [1.0]
     for num_jobs in num_jobs_list:
         for lam in lam_list:

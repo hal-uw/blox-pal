@@ -9,6 +9,6 @@ python /scratch1/08503/rnjain/blox-pal/blox_exp/models/pointnet_ddp.py \
     --world-size=$3 \
     --rank=$4 \
     --master-ip-port=$5 \
-    --job-id=$6 \
+    --job-id=$7 \
     --batch-size=32
 

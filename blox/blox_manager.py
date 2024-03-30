@@ -186,11 +186,47 @@ class BloxManager(object):
                                         job_state.active_jobs[jid]
                                     )
 
-                                jid_to_terminate.append(jid)
-                                # delete GPU utilization
-                                _free_gpu_by_jobid(jid, cluster_state.gpu_df)
-                                # log the finished jobs
-                                job_state.finished_job[jid] = 1
+                                jid_to_terminate.append(jid)  #append to terminate list
+    
+        # use terminate list to actually terminate jobs
+        terminate_list_id = list()
+        terminate_ipaddr = list()
+        terminate_simulation = list()
+        print(f"jid_to_terminate: {jid_to_terminate}")
+        filtered_gpudf = cluster_state.gpu_df[['Node_ID','GPU_ID','Local_GPU_ID','IN_USE','JOB_IDS']]
+        print("State of cluster in update_metrics {}".format(filtered_gpudf))
+
+        logging.info(f"In Blox Manager: update_metrics : {jid_to_terminate} \n")
+        for jid in jid_to_terminate:
+            # find ipaddresses for corresponding jobs to terminate
+            running_ipddr = list(
+                set(_find_ipaddr_by_job_ids(jid, cluster_state.gpu_df))
+            )
+            logging.info(f"In update_metrics : running_ipaddr {running_ipddr} \n")
+            print(f"running_ipddr: {running_ipddr}")
+            terminate_list_id.extend([jid] * len(running_ipddr))
+            terminate_ipaddr.extend(running_ipddr)
+            terminate_simulation.extend(
+                [job_state.active_jobs[jid]["simulation"]] * len(running_ipddr)
+            )
+            # mark the job that is running is false
+            job_state.active_jobs[jid]["is_running"] = False
+            job_state.active_jobs[jid]["rank_0_ip"] = None
+            # the job was suspended
+            job_state.active_jobs[jid]["suspended"] = 1
+            # we don't need to schedule this anymore, remove from active_jobs list
+            job_state.active_jobs.pop(jid)
+            # delete GPU utilization
+            _free_gpu_by_jobid(jid, cluster_state.gpu_df)
+            # log the finished jobs
+            job_state.finished_job[jid] = 1
+
+        logging.info(f"Calling blox_manager terminate_jobs: {terminate_list_id}, terminate ipaddr {terminate_ipaddr}, terminate_simulation {terminate_simulation}\n")
+        self.comm_node_manager.terminate_jobs(
+            terminate_list_id, terminate_ipaddr, terminate_simulation
+        )
+        filtered_columns = cluster_state.gpu_df[['GPU_ID', 'Local_GPU_ID', 'IN_USE', 'JOB_IDS']]
+        logging.info("Cluster State after pruning jobs based on runtime {}".format(filtered_columns))
 
         # additional information for logging responsiveness
         for jid in job_state.active_jobs:
@@ -238,45 +274,6 @@ class BloxManager(object):
                                 job_state.job_responsiveness_stats[jid] += self.round_duration
                             else:
                                 job_state.job_responsiveness_stats[jid] += time.time() - self.last_round_time
-
-        terminate_list_id = list()
-        terminate_ipaddr = list()
-        terminate_simulation = list()
-        print(f"jid_to_terminate: {jid_to_terminate}")
-        filtered_gpudf = cluster_state.gpu_df[['Node_ID','GPU_ID','Local_GPU_ID','IN_USE','JOB_IDS']]
-        print("State of cluster in update_metrics {}".format(filtered_gpudf))
-
-        logging.info(f"In Blox Manager: update_metrics : {jid_to_terminate} \n")
-        print("Job IDs to terminate {}".format(jobs_to_terminate))
-        for jid in jid_to_terminate:
-            # find ipaddresses for corresponding jobs to terminate
-            running_ipddr = list(
-                set(_find_ipaddr_by_job_ids(jid, cluster_state.gpu_df))
-            )
-            print(f"running_ipddr: {running_ipddr}")
-            terminate_list_id.extend([jid] * len(running_ipddr))
-            terminate_ipaddr.extend(running_ipddr)
-            terminate_simulation.extend(
-                [job_state.active_jobs[jid]["simulation"]] * len(running_ipddr)
-            )
-            # mark the job that is running is false
-            job_state.active_jobs[jid]["is_running"] = False
-            job_state.active_jobs[jid]["rank_0_ip"] = None
-            # the job was suspended
-            job_state.active_jobs[jid]["suspended"] = 1
-            job_state.active_jobs.pop(jid)
-            # delete GPU utilization
-            _free_gpu_by_jobid(jid, cluster_state.gpu_df)
-            # log the finished jobs
-            job_state.finished_job[jid] = 1
-
-        print(f"Calling blox_manager terminate_jobs: {terminate_list_id}, terminate ipaddr {terminate_ipaddr}, terminate_simulation {terminate_simulation}\n")
-        logging.info(f"Calling blox_manager terminate_jobs: {terminate_list_id}, terminate ipaddr {terminate_ipaddr}, terminate_simulation {terminate_simulation}\n")
-        self.comm_node_manager.terminate_jobs(
-            terminate_list_id, terminate_ipaddr, terminate_simulation
-        )
-        filtered_columns = cluster_state.gpu_df[['GPU_ID', 'Local_GPU_ID', 'IN_USE', 'JOB_IDS']]
-        print("Cluster State after pruning jobs based on runtime {}".format(filtered_columns))
 
         # update cluster use
         total_jobs, jobs_in_queue, jobs_running = _get_jobs_status(job_state)
@@ -416,7 +413,6 @@ class BloxManager(object):
         Return:
           None
         """
-        setup_logging("exec_jobs")
         terminate_list_id = list()
         terminate_ipaddr = list()
         terminate_simulation = list()

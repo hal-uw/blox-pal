@@ -3,9 +3,9 @@
 #SBATCH -o debug/cluster.%j.out     # Name of stdout output file
 #SBATCH -e debug/cluster.%j.err     # Name of stderr error file
 #SBATCH -p rtx                 # Queue (partition) name
-#SBATCH -N 2                    # Total # of nodes
+#SBATCH -N 8                   # Total # of nodes
 #SBATCH --ntasks-per-node=16 
-#SBATCH -t 06:00:00              # Run time (hh:mm:ss)
+#SBATCH -t 12:00:00              # Run time (hh:mm:ss)
 #SBATCH --mail-user=rnjain@wisc.edu
 #SBATCH --mail-type=all          # Send email at begin and end of job
 

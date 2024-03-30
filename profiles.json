@@ -1,4 +1,4 @@
-{ "classA": "aggregated_data/ls6/resnet-ls6-agg.csv",
-  "classB": "aggregated_data/ls6/resnet-ls6-agg.csv",
-  "classC": "aggregated_data/ls6/resnet-ls6-agg.csv",
-  "classD": "aggregated_data/ls6/resnet-ls6-agg.csv"  }
+{ "classA": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-resnet-agg.csv",
+  "classB": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-bert-agg.csv",
+  "classC": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-bert-agg.csv",
+  "classD": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-pagerank-agg.csv"  }

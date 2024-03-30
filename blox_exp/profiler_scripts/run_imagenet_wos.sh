@@ -11,4 +11,4 @@ python3 /scratch1/08503/rnjain/blox-pal/blox_exp/models/imagenet_ddp.py \
     --master-ip-port=$5 \
     --model-name=$6 \
     --job-id=$8 \
-    --batch-size=32
+    --batch-size=$7

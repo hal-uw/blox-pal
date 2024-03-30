@@ -87,19 +87,22 @@ class Job:
                 "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_imagenet.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
-                self.job_model
+                self.job_model,
+                self.batch_size
             ]
         elif self.job_model == "DCGAN":
             self.launch_command = \
                 "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_dcgan.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
+                self.batch_size
             ]
         elif self.job_model == "PointNet":
             self.launch_command = \
                 "bash /scratch1/08503/rnjain/blox-pal/blox_exp/scripts/run_pointnet.sh"
             self.launch_params = [
                 str(7000 + self.job_id),
+                self.batch_size
             ]
         else:
             raise ValueError("the model is not considered now!!!")
