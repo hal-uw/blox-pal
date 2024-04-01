@@ -1,4 +1,4 @@
-{ "classA": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-resnet-agg.csv",
-  "classB": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-bert-agg.csv",
-  "classC": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-bert-agg.csv",
-  "classD": "/scratch1/08503/rnjain/blox-pal/aggregated_data/frontera/frontera-pagerank-agg.csv"  }
+{ "classA": "aggregated_data/sim/resnet-longhorn-agg.csv",
+  "classB": "aggregated_data/sim/bert-longhorn-agg.csv",
+  "classC": "aggregated_data/sim/bert-longhorn-agg.csv",
+  "classD": "aggregated_data/sim/pagerank-longhorn-agg.csv"  }

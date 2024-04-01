@@ -10,6 +10,12 @@ from blox import BloxManager
 from blox import ClusterState
 from blox import JobState
 import blox.utils as utils
+import logging
+
+# Define logging configurations
+def setup_logging():
+    log_file = f'test_log_file.log'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def main(args):
@@ -46,13 +52,13 @@ def main(args):
             if args.placement_name == "Place":
                 placement_policy = placement.JobPlacement(args)
             elif args.placement_name == "PMFirst":
-                placement_policy = PMFirstPlacement()
+                placement_policy = PMFirstPlacement(args)
             elif args.placement_name == "PAL":
-                placement_policy = PALPlacement()
+                placement_policy = PALPlacement(args)
             elif args.placement_name == "Default-Packed-NS":
-                placement_policy = PackedNSPlacement()
+                placement_policy = PackedNSPlacement(args)
             elif args.placement_name == "Default-Packed-S":
-                 placement_policy = PackedSPlacement()
+                 placement_policy = PackedSPlacement(args)
             elif args.placement_name == "Default-Random-NS":
                 placement_policy = RandomNSPlacement()
             elif args.placement_name == "Default-Random-S":
@@ -140,11 +146,11 @@ def parse_args(parser):
     return a parser with arguments
     """
     parser.add_argument(
-        "--scheduler", default="Las", type=str, help="Name of the scheduling strategy"
+        "--scheduler", default="Fifo", type=str, help="Name of the scheduling strategy"
     )
     parser.add_argument(
         "--scheduler-name",
-        default="Las",
+        default="Fifo",
         type=str,
         help="Name of the scheduling strategy",
     )
@@ -219,6 +225,7 @@ def _get_avg_jct(time_dict):
 
 
 if __name__ == "__main__":
+    setup_logging()
     args = parse_args(
         argparse.ArgumentParser(description="Arguments for Starting the scheduler")
     )

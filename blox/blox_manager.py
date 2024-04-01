@@ -179,9 +179,13 @@ class BloxManager(object):
                                 ):
                                     job_state.job_completion_stats[jid] = [
                                         job_state.active_jobs[jid]["submit_time"],
-                                        time.time(),
+                                        self.time, #simulation
                                     ]
-
+                                    job_state.debug_stats[jid] = {
+                                        "wait_time": job_state.active_jobs[jid]["wait_time"],
+                                        "perfclass": job_state.active_jobs[jid]["perfclass"],
+                                        "num_GPUs": job_state.active_jobs[jid]["num_GPUs"],
+                                    }                                    
                                     job_state.job_runtime_stats[jid] = copy.deepcopy(
                                         job_state.active_jobs[jid]
                                     )
@@ -288,10 +292,14 @@ class BloxManager(object):
 
         gpu_demand = 0
         running_jobs_dict = {}
+        pmpenalty_dict = {}
+        locality_dict = {}
         for jid in job_state.active_jobs:
             gpu_demand += job_state.active_jobs[jid]["num_GPUs"]
             if job_state.active_jobs[jid]["is_running"] == True:
                 running_jobs_dict[jid] = cluster_state.get_gpus_by_job_id(jid)
+                pmpenalty_dict[jid] = job_state.active_jobs[jid]["job_pm_penalty"]
+                locality_dict[jid] = job_state.active_jobs[jid]["locality_penalty"]
 
         cluster_state.cluster_stats[self.time] = {
             "total_jobs": total_jobs,
@@ -300,6 +308,8 @@ class BloxManager(object):
             "free_gpus": free_gpus,
             "gpu_demand": gpu_demand,
             "allocation_dict": running_jobs_dict,
+            "pm_penalty_dict": pmpenalty_dict,
+            "locality_dict": locality_dict,            
         }
 
         if any(jid in job_state.finished_job for jid in job_state.job_ids_to_track):
@@ -333,7 +343,8 @@ class BloxManager(object):
             )
             print(f"simulator_time: {self.time}")
 
-            results_path = "/scratch1/08503/rnjain/blox-pal/results"
+            #results_path = "/scratch1/08503/rnjain/blox-pal/results"
+            results_path = "."
             with open(
                 f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_job_stats.json",
                 "w",
@@ -344,6 +355,12 @@ class BloxManager(object):
                     f"Scheduler: {self.scheduler_name}, Acceptance Policy: {self.acceptance_policy}, Load: {self.load}, Avg JCT {avg_jct}"
                 )
                 json.dump(job_state.job_completion_stats, fopen)
+            with open(
+                f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_debug_stats.json",
+                "w",
+            ) as fopen:
+                # fopen.write(json.dumps(self.cluster_stats))
+                json.dump(job_state.debug_stats, fopen) 
             with open(
                 f"{results_path}/{self.exp_prefix}_{job_state.job_ids_to_track[0]}_{job_state.job_ids_to_track[-1]}_{self.scheduler_name}_{self.acceptance_policy}_{self.placement_name}_load_{self.load}_cluster_stats.json",
                 "w",
@@ -396,6 +413,51 @@ class BloxManager(object):
             new_jobs = self.rmserver.get_new_jobs()
         return new_jobs
 
+    def _get_locality_penalty(self, gpu_df, gpus_to_launch, job_model):
+        """
+        Get packing penalty if the job is distributed across machines
+        """
+        locality_penalty_model = {
+            ('PointNet', 6): 1.0,
+            ('PointNet', 8): 1.10,
+            ('PointNet', 12): 1.20, 
+            ('PointNet', 16): 1.25, 
+            ('DCGAN', 6): 1.0, 
+            ('vgg19', 1): 1.0, 
+            ('resnet50', 4): 1.0, 
+            ('resnet50', 16): 1.16, 
+            ('DCGAN', 12): 1.0, 
+            ('DCGAN', 8): 1.0, 
+        }
+
+        lookup_key = (job_model, len(gpus_to_launch))
+        if lookup_key in locality_penalty_model.keys():
+            penalty = locality_penalty_model[lookup_key]
+        else:
+            penalty = 1.0
+
+        const_lf = 1.0  # locality penalty if allocation is ACROSS nodes   
+
+        node_df = gpu_df[gpu_df["GPU_ID"].isin(gpus_to_launch)]
+        unique_node_ids = list(node_df["Node_ID"].unique())
+
+        locality_penalty = 1.0 #default if allocation is WITHIN a node
+
+        # if spread across nodes
+        if len(unique_node_ids) > 1:
+            locality_penalty = penalty;
+
+        return locality_penalty             
+
+    def _get_perfvar_by_gpulist(self, gpu_df, gpulist, perfclass):
+        """
+        Get performance variance for a job
+        """
+        gpu_perfvar_list = gpu_df[gpu_df["GPU_ID"].isin(gpulist)][f"PerfVar_{perfclass}"].tolist()
+        if not gpu_perfvar_list:
+            return 1.0 
+        return max(gpu_perfvar_list)
+
     def exec_jobs(
         self,
         jobs_to_launch: dict,
@@ -433,6 +495,7 @@ class BloxManager(object):
             active_jobs.active_jobs[jid]["rank_0_ip"] = None
             # the job was suspended
             active_jobs.active_jobs[jid]["suspended"] = 1
+            active_jobs.active_jobs[jid]["job_pm_penalty"] = None
             # mark corresponding GPUs on which the jobs are running as
             # available
             _free_gpu_by_jobid(jid, cluster_state.gpu_df)
@@ -457,6 +520,13 @@ class BloxManager(object):
             self.comm_node_manager.launch_job(
                 jid, active_jobs.active_jobs[jid], local_gpu_ids, ipaddress_to_launch
             )
+            active_jobs.active_jobs[jid]["locality_penalty"] = self._get_locality_penalty(
+                cluster_state.gpu_df, 
+                gpus_to_launch,
+                active_jobs.active_jobs[jid]["job_name"]
+            )
+            perfclass = active_jobs.active_jobs[jid]["job_perfclass"]
+            active_jobs.active_jobs[jid]["job_pm_penalty"] = self._get_perfvar_by_gpulist(cluster_state.gpu_df, gpus_to_launch, perfclass)
             active_jobs.active_jobs[jid]["is_running"] = True
             active_jobs.active_jobs[jid]["rank_0_ip"] = list(set(ipaddress_to_launch))
 
@@ -477,6 +547,7 @@ class BloxManager(object):
                 active_jobs.active_jobs[jid][
                     "time_since_scheduled"
                 ] += self.round_duration
+                active_jobs.active_jobs[jid]["wait_time"] += self.round_duration
                 if (
                     active_jobs.active_jobs[jid]["time_since_scheduled"]
                     >= self.priority_thresh

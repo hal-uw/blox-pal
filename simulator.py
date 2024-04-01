@@ -8,6 +8,7 @@ import numpy as np
 from workload import Workload
 from concurrent import futures
 from typing import Tuple
+import logging
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -23,7 +24,6 @@ from blox.deployment.grpc_stubs import rm_pb2_grpc
 from blox.deployment.grpc_stubs import simulator_pb2
 from blox.deployment.grpc_stubs import simulator_pb2_grpc
 import traceback
-
 
 class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
     """
@@ -46,7 +46,7 @@ class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
         placement=True,
         prioritize=False,
         round_duration=360,
-        number_of_machines=8,
+        number_of_machines=16,
         gpus_per_machine=4,
         memory_per_machine=16,
         is_numa_available=False,
@@ -287,32 +287,6 @@ class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
                     bbox_inches="tight",
                 )
                 
-    def _get_perfclass(self, job, class_id):
-        if "perfclass" in job and (job.get("perfclass")) is not None:
-            return job["perfclass"]
-        else:
-            if class_id == 0: #alexnet
-                return "classA"
-            elif class_id == 1: #res18
-                return "classC"
-            elif class_id == 2: #res50
-                return "classA"
-            elif class_id == 3: #mobilenet
-                return "classD"
-            elif class_id == 4: #shufflenet
-                return "classD"
-            elif class_id == 5: #gnmt
-                return "classB"
-            elif class_id == 6: #transformer
-                return "classB"
-            elif class_id == 7: #lstm
-                return "classD"
-            elif class_id == 8: #deepspeech
-                return "classB"
-            else:
-                return "classB"
-
-
     def _clean_sim_job(self, new_job: dict) -> dict:
         """
         Preprocesses the job for simulations.
@@ -332,7 +306,13 @@ class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
             new_job.pop("job_model")
 
         new_job["num_GPUs"] = new_job["job_gpu_demand"]
-        new_job["perfclass"] = self._get_perfclass(new_job, new_job["job_class_id"])
+        new_job["perfclass"] = new_job["job_perfclass"]
+        # using self.round_duration to find the amount of time job has to necessarily wait
+        difference = (
+            round(new_job["job_arrival_time"] / self.round_duration + 0.5) * self.round_duration 
+            - new_job["job_arrival_time"]
+        )
+        new_job["wait_time"] = difference
         # new_job["params_to_track"] = [
         # "per_iter_time",
         # "attained_service",
@@ -364,7 +344,7 @@ class SimulatorRunner(simulator_pb2_grpc.SimServerServicer):
                 40,
             ],
             num_jobs_default=self.num_jobs_default,
-            trace="workload-traces/shockwave/poisson_trace_120_lam1-noheader.csv",
+            trace="workload-traces/philly/workload-2.csv",
         )
 
     def _generate_simulator_configs(self):
@@ -462,15 +442,15 @@ def launch_server(args) -> grpc.Server:
             np.arange(2.0, 4.0, 2.0).tolist(),
             (args.start_job_track, args.end_job_track),
             [
-                "Fifo",
+                "Las",
             ],
             [   
+                "PAL",   
                 "Default-Packed-S",
                 "Default-Packed-NS",
                 "Default-Random-S",
                 "Default-Random-NS",
-                "PAL",
-                "PMFirst"                
+                "PMFirst"       
             ],
             ["AcceptAll"],
             exp_prefix=args.exp_prefix,

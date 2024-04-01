@@ -82,7 +82,12 @@ class ClusterState(object):
                         range(numGPUs_on_node), gpu_uuid_list
                     ):
                         # get per-class PerfVar value corresponding to gpu_uuid
-                        perfvar_arr = self._get_machine_slowdowns(gpu_uuid)
+                        # cluster
+                        # perfvar_arr = self._get_machine_slowdowns(gpu_uuid)
+                        # sim 
+                        # perfvar_arr = self._get_sim_worst_slowdowns(self.gpu_number)
+                        perfvar_arr = self._get_machine_slowdowns(self.gpu_number)
+                        
                         gpuID_list.append(
                             {
                                 "GPU_ID": self.gpu_number,
@@ -118,6 +123,57 @@ class ClusterState(object):
         if len(new_nodes) > 0:
             self._add_new_machines(new_nodes)
         return new_nodes
+
+
+    def _get_sim_slowdowns(self, gpu_uuid):
+        norm_perfvar = {}
+        num_replicas = self.gpu_number
+        num_clusters = 8 #K value - tuning later
+
+        # Read profiles.json to get list of aggregated CSV names
+        with open('profiles.json') as json_file:
+            perfclasses = json.load(json_file)
+
+        df_cluster = pd.read_csv('aggregated_data/32gpu-variability.csv')    
+        logging.debug("read in df_cluster {}".format(df_cluster.to_string()))
+        for key in perfclasses:
+            variability_val = df_cluster[df_cluster['GPU_ID'] == gpu_uuid][f"PerfVar_{key}"].values[0]
+            norm_perfvar[key] =  variability_val
+
+        return norm_perfvar
+    
+
+    def _get_sim_worst_slowdowns(self, gpu_id):
+        norm_perfvar = {}
+
+        # Read profiles.json to get list of aggregated CSV names
+        with open('profiles.json') as json_file:
+            perfclasses = json.load(json_file)
+
+        # Read 32gpu-varaibility.csv to get mapping for gpu_id to cluster UUID 
+        df = pd.read_csv("aggregated_data/32gpu-variability.csv")
+        gpu_dict = df.set_index('GPU_ID')['GPU_UUID'].to_dict()
+        logging.info(f"gpu id to uuid mapping dict {gpu_dict}")
+
+        for key in perfclasses:
+            df_sliced = pd.read_csv(perfclasses[key])
+
+            median_value = df_sliced['perf'].median()
+            df_sliced['perf'] = df_sliced['perf'].apply(lambda x: x / median_value)
+
+            perf_lists = df_sliced.groupby('uuid')['perf'].apply(list) # same uuid can have multiple entries
+            max_perfs = perf_lists.apply(lambda x: np.max(x))
+            max_perfs_dict = max_perfs.to_dict()
+
+            gpu_uuid = gpu_dict[gpu_id]
+            if gpu_uuid in max_perfs_dict.keys():
+                norm_perfvar[key] = max_perfs_dict[gpu_uuid]
+            else:
+                logging.info(f"Getting slowdown factors: randomly sampled for UUID {gpu_uuid}")
+                #randomly sample df_sliced['perf'] value from dataframe
+                norm_perfvar[key] = random.choice(df_sliced['perf'])
+
+        return norm_perfvar        
 
 
     def _get_machine_slowdowns(self, gpu_uuid):

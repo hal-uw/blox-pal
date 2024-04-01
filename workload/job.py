@@ -31,6 +31,8 @@ class Job:
         synergy_res_matrix,
         synergy_storage_matrix, 
         tenant_id,
+        job_perfclass="classA",
+        job_name="", #so that we don't overuse model
         job_cpu_demand=-1,
         job_mem_demand=-1,
         job_sspeed_demand=-1,
@@ -60,6 +62,8 @@ class Job:
 
         self.job_packing_penalty = job_packing_penalty
         self.job_placement_penalty = job_placement_penalty
+        self.job_perfclass = job_perfclass
+        self.job_name = job_name
         self.tenant_id = tenant_id
         self.job_queueing_delay = job_queueing_delay
         self.job_priority = job_priority

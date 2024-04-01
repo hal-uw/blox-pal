@@ -306,6 +306,15 @@ class Workload(object):
             if self.prioritize:
                 if self.series_id_filter[0] <= job.job_id < self.series_id_filter[1]:
                     job.job_priority = 1
+        elif self.workload_type == "replay":
+            # Code for replaying Pollux traces
+            job = self.jobs[self.job_id % self.total_jobs]
+            job.job_id = self.job_id
+            if int(self.job_id/self.total_jobs) >= 1:
+                inter_arrival_time = poisson_next_arrival_time(self.jobs_per_hour)
+                job.job_arrival_time = last_job_arrival_time + inter_arrival_time
+            print("Replay job id ", job.job_id)
+            tenant_id = 0
         else:
             job_id = self.job_id
             tenant_id = 0
@@ -340,7 +349,8 @@ class Workload(object):
             )
         self.job_id += 1
 
-        job.job_task, job.job_class_id = self.model_zoo.get_job_class()
+        if self.workload_type != "replay":
+            job.job_task, job.job_class_id = self.model_zoo.get_job_class()
 
         # Update job iter times and CPU, Mem profiles for the job
         # based on the chosen model
@@ -402,31 +412,70 @@ class Workload(object):
             jobs.append(job)
         return jobs
 
+    def get_per_iter_time(self, model):
+
+        # median iter times from cluster run
+        # iter_time_model = {
+        #     'BERT': 0.05496686, 
+        #     'DCGAN': 0.0499364115, 
+        #     'GPT2': 3.5714, 
+        #     'PointNet': 0.310915643, 
+        #     'resnet50': 0.190437514, 
+        #     'vgg19': 0.300610341
+        # }
+
+        iter_time_model = {
+            'BERT': 0.179, 
+            'DCGAN': 0.0469266931, 
+            'GPT2': 3.5714, 
+            'PointNet': 0.28125, 
+            'resnet50': 0.17540429367763434, 
+            'vgg19': 0.300610341
+        }
+
+        return iter_time_model[model]
+
+    def get_perfclass(self, class_id):
+        if class_id == 'resnet50': 
+            return "classA"
+        elif class_id == 'vgg19': 
+            return "classC"
+        elif class_id == 'PointNet': 
+            return "classD"
+        elif class_id == 'GPT2':
+            return "classB"
+        elif class_id == 'DCGAN': 
+            return "classB"
+        elif class_id == 'BERT': 
+            return "classB"
+        else:
+            return "classA"
+        
     def populate_from_trace(self, trace):
-        # Trace file has <job_id, model_name, arrival_time, num_iters, gpu_demand>
+        # Trace file has <job_id, num_gpus, submit_time, duration, model, batch_size>
+        df = pd.read_csv(trace)
         jobs = []
-        with open(trace, "r") as fr:
-            for line in fr:
-                job_stats = line.strip().split(",")
-                job = Job(
-                    int(job_stats[0]),
-                    float(job_stats[2]),
-                    1,
-                    int(job_stats[3]),
-                    # 1,
-                    int(job_stats[4]),
-                    None,
-                    None,
-                    None,
-                    None,
-                    0,
-                    iter_is_duration=True,
-                )
-                job.job_task, job.job_class_id = self.model_zoo.get_job_class_by_name(
-                    job_stats[1]
-                )
-                #self.add_synergy_profile(job)
-                jobs.append(job)
+
+        for index, row in df.iterrows():
+            # get per_iter_time from profiling data
+            per_iter_time = self.get_per_iter_time(row['model'])
+            perfclass = self.get_perfclass(row['model'])
+            job = Job(
+                job_id=int(row['job_id']),
+                job_arrival_time=float(row['submit_time']),
+                job_iteration_time=per_iter_time,
+                job_total_iteration=row['duration'],
+                job_gpu_demand=row['num_gpus'],
+                job_packing_penalty=None,
+                job_placement_penalty=None,
+                synergy_res_matrix=None,
+                synergy_storage_matrix=None, 
+                tenant_id=0,
+                job_perfclass=perfclass, 
+                job_name=row['model'],      
+            )
+            jobs.append(job)
+
         return jobs
 
     def default_workload(self, jobs=5):

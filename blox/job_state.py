@@ -29,6 +29,7 @@ class JobState(object):
         # count number of accepted jobs
         self.job_counter = 0
         self.job_completion_stats = dict()
+        self.debug_stats = dict()
         self.job_responsiveness_stats = dict()
         self.cluster_stats = dict()
         self.custom_metrics = dict()

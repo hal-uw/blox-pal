@@ -55,7 +55,7 @@ class PALPlacement(object):
         if not bool(self.alloc_order):
             if not gpu_df.empty:   #get alloc order based on L-V Matrix only if there are GPUs registered
                 self.alloc_order, self.dict_of_dfs = get_slowdown_factors(gpu_df)
-        gpu_df.to_csv("/scratch1/08503/rnjain/blox-pal/logs/pal-runs/gpu_df.csv")
+        #gpu_df.to_csv("/scratch1/08503/rnjain/blox-pal/logs/pal-runs/gpu_df.csv")
         job_order = new_job_schedule["job_order"]
         scheduler = new_job_schedule.get("scheduler")
         jobs_to_terminate = list()
@@ -521,6 +521,14 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
     with open('profiles.json') as json_file:
         perfclasses = json.load(json_file)
 
+    # specified at design time
+    lf_model = {
+        "classA": 1.16,
+        "classB": 1.0,
+        "classC": 1.0,
+        "classD": 1.10
+    }
+
     # For each class
     for key in perfclasses:
         temparr = df_copy[[f"PerfVar_{key}"]].values
@@ -535,10 +543,10 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
         ##############################################################################################
         # K means clustering to get sfs
         #get number of clusters without outliers
-        #K1 = get_optimal_k(temparr, outliers)
+        K1 = get_optimal_k(temparr, outliers)
 
-        #K2 = outliers.sum() # Number of outliers 
-        #num_clusters = K1 + K2
+        K2 = outliers.sum() # Number of outliers 
+        num_clusters = K1 + K2
 
         # if outliers.any():
         #     #identify ideal number of clusters for outlier data alone
@@ -580,7 +588,7 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
         # Order of traversing Locality x sf matrix
         # Penalties for within and across allocations
         lf_within        = 1.0
-        lf_across        = 1.734
+        lf_across        = lf_model[key]
         sfs_list = df_copy['sf'].unique()
 
         # Ordering of sfs vs locality for each class
@@ -617,24 +625,23 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
         # locality_dict[key] = locality
 
         ################################################
-        # Extra code for plotting the clusters per class
-        # seaborn.set_style("whitegrid")
-        # seaborn.set_style("whitegrid", {"font.family": "serif"})
-        # seaborn.set_palette("colorblind")
-        # plt.figure(key)
+        # # Extra code for plotting the clusters per class
+        # # Graphing customizability options
+        # plt.rcParams["font.family"] = "Times New Roman"
+        # plt.style.use('seaborn-whitegrid')
+        # plt.figure(key,figsize=(5, 4))
         # #plot = seaborn.boxplot(y="perf", hue="label", data=df_subset, width=0.5, showfliers=False, fliersize=5, linewidth=3, notch=False, palette="Set2")
         # #plot = seaborn.stripplot(x="pwr", y="perf", hue="label", palette="Set2", linewidth=1, edgecolor="gray", alpha=.75, data=df_subset, s=10, jitter=0.1, size=0.3)
-        # plt.scatter(df_copy[f"PerfVar_{key}"],df_copy['GPU_ID'],c=df_copy['label'],cmap='Set1', edgecolors='black', alpha=0.8)
+        # plt.scatter(df_copy[f"PerfVar_{key}"],df_copy['GPU_ID'],c=df_copy['label'],cmap='Set1',edgecolor="black",alpha=0.8,s=25)
 
         # # Annotate each point
         # #for i, gpu_ind in enumerate(df_copy['GPU_ID']):
         # #    plt.annotate(gpu_ind, (df_copy[f"PerfVar_{key}"].iloc[i], df_copy['GPU_ID'].iloc[i]))
 
-        # plt.scatter(centers, [0]*num_clusters , c='black', marker="x")
-        # plt.xlabel(f"Performance (ms)")
-        # plt.ylabel("GPU_ID ")
-        # plt.suptitle("Clustering by performance", y=1.05, fontsize=5)
-        # plt.title(f"Clustering for {key}", fontsize=10)
+        # plt.scatter(centers, [0]*num_clusters , c='black', marker="x",s=50)
+        # plt.xlabel(f"Performance (normalized to median GPU)")
+        # plt.ylabel("GPU ID ")
+        # plt.title(f"Clustering Variability Data from ResNet-50", fontsize=15)
         # plt.savefig(f"charts/perf-clustering-{key}.pdf")
         ################################################
 

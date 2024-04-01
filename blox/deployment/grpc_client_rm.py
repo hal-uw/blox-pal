@@ -231,15 +231,22 @@ class ResourceManagerComm(object):
 
                 active_job_dict[job_id]["previously_launched"] = True
 
+                mod_iteration_time = (
+                    active_job_dict[job_id]["job_pm_penalty"] * 
+                    active_job_dict[job_id]["locality_penalty"] * 
+                    active_job_dict[job_id]["job_iteration_time"]
+                )               
+                logging.info(f"For Job ID: {job_id} per_iter_time = {mod_iteration_time}")
+
                 total_iterations_in_round = (
-                    round_duration / active_job_dict[job_id]["job_iteration_time"]
+                    round_duration / mod_iteration_time
                 )
                 attained_service = (
                     active_job_dict[job_id]["tracked_metrics"]["attained_service"]
                     + round_duration
                 )
 
-                per_iteration_time = active_job_dict[job_id]["job_iteration_time"]
+                per_iteration_time = mod_iteration_time
 
                 total_iteration_achieved = (
                     total_iterations_in_round

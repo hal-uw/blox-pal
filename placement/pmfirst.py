@@ -316,6 +316,13 @@ def find_gpus_matching_JobID(job_id: int, gpu_df: pd.DataFrame) -> list:
     """
     return gpu_df.loc[gpu_df["JOB_IDS"] == job_id]["GPU_ID"].tolist()
 
+def get_gpus_by_job_id(gpu_df: pd.DataFrame, job_id: int):
+    # Filter the DataFrame based on JOB_ID and IN_USE
+    filtered_df = gpu_df[(gpu_df['JOB_IDS'] == job_id) & (gpu_df['IN_USE'] == True)]
+    gpu_ids = filtered_df['GPU_ID'].tolist()
+    return gpu_ids
+
+
 # Find free GPUs
 def find_free_GPUs(gpu_df: pd.DataFrame) -> dict:
     """
