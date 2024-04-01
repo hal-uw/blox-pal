@@ -4,7 +4,8 @@
 #SBATCH -e debug/cluster.%j.err     # Name of stderr error file
 #SBATCH -p rtx                 # Queue (partition) name
 #SBATCH -N 8                   # Total # of nodes
-#SBATCH --ntasks-per-node=16 
+#SBATCH --ntasks-per-node=16
+#SBATCH -w c198-[021-022,031-032,041-042,051-052] 
 #SBATCH -t 12:00:00              # Run time (hh:mm:ss)
 #SBATCH --mail-user=rnjain@wisc.edu
 #SBATCH --mail-type=all          # Send email at begin and end of job
