@@ -438,12 +438,12 @@ def launch_server(args) -> grpc.Server:
     simulator_pb2_grpc.add_SimServerServicer_to_server(
         SimulatorRunner(
             args.cluster_job_log,
-            np.arange(2.0, 4.0, 2.0).tolist(),
+            np.arange(8.0, 16.0, 2.0).tolist(),
             (args.start_job_track, args.end_job_track),
             [
+                "Fifo",
                 "Las",
                 "Srtf",
-                "Fifo"
             ],
             [   
                 "PAL",   

@@ -436,7 +436,7 @@ class BloxManager(object):
         else:
             penalty = 1.0
 
-        const_lf = 1.0  # locality penalty if allocation is ACROSS nodes   
+        const_lf = 1.7  # const_lf locality penalty if allocation is ACROSS nodes   
 
         node_df = gpu_df[gpu_df["GPU_ID"].isin(gpus_to_launch)]
         unique_node_ids = list(node_df["Node_ID"].unique())
@@ -445,7 +445,7 @@ class BloxManager(object):
 
         # if spread across nodes
         if len(unique_node_ids) > 1:
-            locality_penalty = penalty;
+            locality_penalty = const_lf;
 
         return locality_penalty             
 

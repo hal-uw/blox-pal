@@ -463,7 +463,8 @@ def launch_server(args) -> grpc.Server:
             ],
             ["AcceptAll"],
             exp_prefix=args.exp_prefix,
-            multigpu=True
+            multigpu=True,
+            trace=args.trace
         ),
         server,
     )

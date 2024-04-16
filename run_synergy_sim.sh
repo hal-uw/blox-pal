@@ -10,12 +10,12 @@ PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python simulator_synergy.py \
 --sim-type trace-synthetic \
 --jobs-per-hour 2 \
 --exp-prefix sia \
---start-job-track 2000 \
---end-job-track 3000 &
-
+--start-job-track 0 \
+--end-job-track 10 &
 pid1=$!
 
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --start-id-track 2000 --stop-id-track 3000 --round-duration 300 --simulate &
+#PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --start-id-track 2000 --stop-id-track 3000 --round-duration 300 --simulate &
+PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --start-id-track 0 --stop-id-track 10 --round-duration 300 --simulate &
 pid2=$!
 
 # Wait for resource_manager.py to finish

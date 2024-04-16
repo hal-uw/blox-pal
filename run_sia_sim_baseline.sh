@@ -20,7 +20,7 @@ for workload in "${workloads[@]}"; do
     --exp-prefix sia \
     --start-job-track 0 \
     --end-job-track 159 \
-    --trace "$trace_path" &
+    --trace $trace_path &
     pid1=$!
 
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --start-id-track 0 --stop-id-track 159 --round-duration 360 --simulate &
