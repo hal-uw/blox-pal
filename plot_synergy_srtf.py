@@ -45,7 +45,7 @@ colors_dict = {
    "PAL":"#c85200"
 }
 
-scheduler="Fifo"
+scheduler="Srtf"
 
 def _get_avg_jct(time_dict):
     """
@@ -87,7 +87,7 @@ placement_labels = {
 # placement = ["PMFirst"]
 job_ids_to_track = [2000, 3000]
 #config = {"Fifo": [1,2,3,4,5,6,7,8]} 
-config = {"Fifo": [8.0, 10.0, 12.0, 14.0]} 
+config = {"Srtf": [8.0, 10.0, 12.0, 14.0]} 
 
 job_data = {
     'scheduler': [],
@@ -102,7 +102,7 @@ for scheduler in config.keys():
         for load in config[scheduler]:
             jct_distribution = {}
             stat_fname = f"{exp_prefix}_{job_ids_to_track[0]}_{job_ids_to_track[1]}_{scheduler}_AcceptAll_{placement_policy}_load_{load}_job_stats.json"
-            print(stat_fname)
+            print(f"Reading {stat_fname}")
             if os.path.exists(stat_fname):
                 with open(stat_fname, "r") as fin:
                     data_job = json.load(fin)
@@ -131,7 +131,7 @@ data_fifo = {
 filtered_main = main_df[main_df["scheduler"] == scheduler]
 placement_policies = filtered_main["placement_policy"].unique()
 placement_jct = {}
-for i, plac in enumerate(placement_policies):
+for i, plac in enumerate(placement):
     avg_jcts = []
     data = filtered_main[filtered_main["placement_policy"] == plac]
     for load in config[scheduler]:

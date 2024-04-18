@@ -45,7 +45,7 @@ colors_dict = {
    "PAL":"#c85200"
 }
 
-scheduler="Fifo"
+scheduler="Las"
 
 def _get_avg_jct(time_dict):
     """
@@ -87,7 +87,7 @@ placement_labels = {
 # placement = ["PMFirst"]
 job_ids_to_track = [2000, 3000]
 #config = {"Fifo": [1,2,3,4,5,6,7,8]} 
-config = {"Fifo": [8.0, 10.0, 12.0, 14.0]} 
+config = {"Las": [8.0, 10.0, 12.0, 14.0]} 
 
 job_data = {
     'scheduler': [],
