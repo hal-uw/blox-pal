@@ -1,196 +1,150 @@
-# Blox
-This repository contains the source code implementation of the Eurosys 2024 paper "Blox: A Modular Toolkit for Deep Learning Schedulers". This work was done as part of Microsoft Research's [Project Fiddle](https://https://aka.ms/msr-fiddle). This source code is available under the [MIT License](LICENSE.txt).
+# PAL: A Variability-Aware Policy for Cluster Scheduling in GPU-Rich HPC Systems
+This repository contains the source code implementation for the submission paper "PAL: A Variability-Aware Policy for Cluster Scheduling in GPU-Rich HPC Systems". The source code is from Blox ("Blox: A Modular Toolkit for Deep Learning Schedulers") with PAL and PM-First placement policies added.
 
-Blox provides a modular framework for implementing deep learning research schedulers. Blox provides modular abstractions which can be easily swapped/modified to enable researchers to implement novel scheduling and placement policies.
-
-### Abstraction Provided
-* Job Admission Policy - Allows researchers to implement any admission policy and provides an interface to accept jobs.
-* Cluster Management - Handle addition or deletion of available nodes.
-* Job Scheduling Policy - Implement scheduling policy, i.e., deciding which jobs to run.
-* Job Placement Policy - Implement Placement policy, i.e., deciding which specific GPUs to run a job.
-* Job Launch and Preemption - Launch/Preempt specific jobs on any node in the cluster.
-* Metric Collection - Collect any metric that are needed to make informed placement or launch decisions.
-
-### Using blox
-
-Components of blox are designed to be easily swappable based on different objective. However, from experience, most of existing deep learning schedulers can be implemented by adding a new scheduling policy and modifying the placement.
-
-
-### Blox Simulator 
-
-For large scale experiments it is often the practise to simulate how a policy will behave under different loads. Blox also provides a built in simulator for this case. 
-Simulator for blox is implemented in _simulator.py_. Researchers can configure the load values, load arrival patterns.
-
-
-### Blox utilities
-
-Blox already has several plotting and metric parsing utilities. Based on configurations, blox will automatically output metrics like Job Completion Time and Job Completion CDFs. 
-
-### Writing a simulator in Blox
-
-For implementing a new scheduler in Blox, a user first needs to determine in what part of the scheduler do they want to modify. 
-
-Once the user has determined the specific location of their contribution. They can look at the following guide to determine, what code do they need to modidy. 
-- Following is the location of files - 
-- Scheduling Policy - /schedulers
-- Placement Policy - /placement
-- Workload Policy - /workload
-- :Admission Policy - /admission_control
-
-
-For an example users should look at `las_scheduler.py` which implements Least Attained Service scheduler.
-
-### Running Blox
-
-Blox has two modes for running. One real cluster workload and second simulator. 
-
-##### Simulation Mode
-
-The simplest way to get started with Blox is in simulation mode. 
-
-The following code will run LAS scheduling policy in simulation mode on the Philly Trace with jobs sent with load average of 1.0
-
-On one terminal launch - 
-
+### Pull this respository
 ```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python simulator_simple.py --cluster-job-log ./cluster_job_log --sim-type trace-synthetic --jobs-per-hour 1 --exp-prefix test
+git clone https://github.com/rutwik-n-jain/blox-pal.git
+cd blox-pal
+git checkout artifact
 ```
 
-On the second terminal launch - 
+### Install dependencies
+The following steps are used to create a conda virtual environment with the necessary dependencies installed. 
+
+To install conda, follow steps in [Conda Installation](#Conda-Installation)
 
 ```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python las_scheduler.py --simulate --load 1 --exp-prefix test
-
+conda create -n envpal python=3.8
+conda activate envpal
+python3 -m pip install -r requirements.txt
 ```
 
-Make sure only one instance of each is running on a machine/docker container. We use fixed GRPC ports to communicate, if more than one are launched there could be some unintended consequences.
-
-
-##### Cluster mode
-On the node where we are running the scheduler
-
+Before running simulations, we need to build gRPC stubs.
 ```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python las_scheduler.py --expe-prefix cluster_run
-```
-
-On each node in the cluster launch 
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python node_manager.py --ipaddr ip_address_scheduler
- ```
-In certain cases you would want to specifically give the interface you want the node manager to bind. For ex- on AWS to bind to the local ip for communication you might want to select eth0, similarly on Cloudlab the preferred interface will be enp94s0f0.
-In those cases launch node_manager in the following way. 
-
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python node_manager.py --ipaddr ip_address_scheduler --interface interface_name
+cd blox/deployment
+make rpc
 ```
 
 
-### Details for reproducing results for artifacts
-These are instructions for reproducing artifacts for Blox.
-#### Installation 
-Blox uses gRpc, Matplotlib to communicate and Plot several collected Metric. 
-We suggest the users to create a virtual environment to install the dependencies.
-```
-pip install grpcio
-pip install matplotlib
-pip install pandas==1.3.0
-pip install grpcio-tools
-```
+## Artifact Components
 
-###### Running Blox Code
-To perform simulation.
-In one terminal window.
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python simulator.py --cluster-job-log ./cluster_job_log --sim-type trace-synthetic --jobs-per-hour 6 --exp-prefix test
-```
-In second terminal window. 
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --simulate --load 6 --exp-prefix test
-```
-The above experiment will take around 8hrs to run and will generate CDF, JCT and runtime for Fifo, LAS and Optimus Scheduler as in Figure 6. 
+- **A1**: Sia-Philly Trace: Baseline Simulations
+- **A2**: Sia-Philly Trace: Varying Locality Penalty
+- **A3**: Synergy Trace: Varying Job Load and Schedulers
 
+## Mapping Artifact Components to Paper Elements
 
-For running LAS scheduler with different acceptance policy. This will provide Avg JCTs for Figure 12 and Figure 13.
+| Artifact Component | Contributions Supported | Related Paper Elements |
+|--------------------|-------------------------|------------------------|
+| **A1**             | C1                      | Section V.B            |
+|                    |                         | Figure 10              |
+| **A2**             | C2                      | Section V.B            |
+|                    |                         | Figure 12              |
+| **A3**             | C3                      | Section V.C            |
+|                    |                         | Figure 13              |
+|                    |                         | Section V.C            |
+|                    |                         | Figures 15 and 16      |
 
+## A<sub>1</sub>: Sia Simulations
 
+### Evaluation
 
-Replicating only Figure 12
+We evaluated the performance of our placement policies relative to baselines using the Sia-Philly workload traces. Section IV.B of the paper provides details about workload and cluster configuration, and results are presented in Section V.B.
 
-In one terminal 
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python simulator_acceptance_policy.py --cluster-job-log ./cluster_job_log --sim-type trace-synthetic --jobs-per-hour 6 --exp-prefix test
-```
-In second terminal 
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --simulate --load 6 --exp-prefix test
-```
+### Performance
 
+- **PM-First** improves average JCT by 40% geomean (min 5%, max 59%)
+- **PAL** improves average JCT by 43% geomean (mix 21%, max 59%) compared to baseline Packed-Sticky placement.
 
+### Computational Time
 
-For running LAS scheduler with different acceptance policy. This will provide Avg JCTs for Figure 12 and Figure 13.
-In one terminal 
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python simulator_dual_load.py --cluster-job-log ./cluster_job_log --sim-type trace-synthetic --jobs-per-hour 6 --exp-prefix test
-```
-In second terminal 
-```
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --simulate --load 6 --exp-prefix test
-```
+- The expected computational time of this artifact on a CPU node is around 180 minutes. This can be reduced by running fewer workload traces (instructions for the same are specified in Artifact Execution).
+- Artifact setup is expected to take 20 minutes or less, and the artifact analysis script takes 3 minutes.
+
+### Hardware Requirements
+
+Simulations require a CPU machine. All experiments were run with an x86_64 machine (Intel E5-2630 v3 8-core CPUs at 2.40 GHz - Haswell w/ EM64T with 8x 16 GB DDR4 memory) running Ubuntu 18.04.6. Code has also been tested on Mac M1 with Darwin Kernel Version 23.4.0.
+
+### Software Requirements
+
+Simulations use gRPC to communicate, while analysis scripts use matplotlib, seaborn, and other Python libraries to plot several collected metrics. We recommend that users create a virtual environment to install these dependencies.
 
 
-#### Running Multiple Solutions in Parallel 
-Blox supports running multiple simulations on the same machine. The authors will need to specify the port numbers correctly. 
-Here is an example to run multiple simulations. Run the following commands in different terminals. 
-
-Running First simulation.
+Before running simulations, we need to build gRPC stubs.
 ```
-python simulator_simple.py --cluster-job-log ./cluster_job_log --sim-type trace-synthetic --jobs-per-hour 1 --exp-prefix test --simulator-rpc-port 50511
-```
-```
-python las_scheduler.py --simulate --load 1 --exp-prefix test --simulator-rpc-port 50511
+cd blox/deployment
+make rpc
 ```
 
-Running Second Simulation.
+We provide a run script that launches all simulations and produces relevant output logs for each workload trace in the Sia-Philly trace set. 
+To reduce computational time, edit line 7 of the script to run fewer traces. 
 ```
-python simulator_simple.py --cluster-job-log ./cluster_job_log --sim-type trace-synthetic --jobs-per-hour 1 --exp-prefix test --simulator-rpc-port 50501
+conda activate envpal
+./run_sia_sim_baseline.sh
 ```
-```
-python las_scheduler.py --simulate --load 1 --exp-prefix test --simulator-rpc-port 50501
-```
-#### Running cluster experiments in Blox
-Blox allows users to run experiments on the real cluster. However, running experiments on real cluster requires additional setup.
 
-First on a node launch the scheduler you will like to run. For example - 
+To reproduce Figure 10 in the paper, run the following plotting script:
 ```
-python las_scheduler_cluster.py --round-duration 30 --start-id-track 0 --stop-id-track 10
+python plot_sia_sim_baseline.py
 ```
-The above command will launch the cluster scheduler. 
 
-Next on each node which you plan to run the jobs on, start redis-server and launch the job-manager.
-```
-redis-server
-```
-Post starting redis-server, you need to launch the node manager.
+## A<sub>2</sub>: Sia Locality-Sweep Simulation
+
+### Evaluation
+We analyze how different inter-node locality penalty values affect our policies for the Sia-Philly workloads. As the locality penalty increases, the best-performing baseline (Packed-Sticky) improves its average JCT and approaches
+**PM-First**’s and **PAL**’s performance. **PM-First**’s average JCT improvement over Packed-Sticky decreases from 30% to 9% as
+the locality penalty increases from 1.0 to 3.0 **PAL** outperforms both PM-First and Packed-Sticky, with benefits over Packed-Sticky only decreasing from 30% to 20% geomean.
+
+### Execution
+We provide a run script that varies the inter-node locality penalty from 1.0 to 3.0 in steps of 0.5 and runs simulations at each value to produce relevant output logs. 
 
 ```
-python node_manager.py --ipaddr {ip_addr_of_scheduler} --interface {network_interface_to_use}
+conda activate envpal
+./run_sia_sim_losweep.sh
 ```
-For starting the node manager, we need two mandatory arguments, the IP Address of the scheduler and the network interface you want to use the node manager to use. 
-To get the network interface you can run `ip a`.
 
-Finally you need to send the jobs to the the scheduler. For an example of how to submit jobs you can look [here](https://github.com/msr-fiddle/blox/blob/main/blox/deployment/job_submit_script.py).
-
-To launch a job on the cluster there are two mandatory fields to blox.
-First is the launch_command, launch_command gives the command to launch.
-Next you can pass any command line arguments with Blox, by using the launch_params key, as done in the job_submit_script.py.
-For each application blox also sets following environment variables. 
-For multiple jobs blox will launch the command multiple times. However, with differnt environment variables.
-The users are responsible to configure the environment variables themselves. Following is the enviroment variable to query, and their description. 
+To reproduce Figure 12 in the paper, run the following plotting script:
 ```
-local_gpu_id : specifies the local gpu id this job is running
-master_ip_address: in case of a distributed job this is the master-ip-address to use.
-world_size: total number of workers running this command
-dist_rank: rank of the current process
-job_id: job id assigned to this particular job by blox
-local_accessible_gpu: all gpus that can accessed by this job. This is especially useful with CUDA_VISIBLE_DEVICES.
-``` 
+python plot_sia_sim_losweep.py
+```
+
+## A<sub>3</sub>: Varying Cluster Contention and Scheduling Policies
+
+### Evaluation
+We vary the job arrival rate, and in turn, the contention level on the cluster, and measure JCTs to evaluate the performance of our policies. We use the Synergy workload and simulate a 256 GPU cluster. These experiments are also run with three different scheduling policies - FIFO, LAS, and SRTF. 
+
+### Execution
+We provide a run script `run_synergy_baseline.sh` to vary job load from 8 to 14 jobs/hour and run experiments for all 3 schedulers. 
+
+{{ \footnotesize
+\begin{minted}{bash}
+conda activate envpal
+./run_synergy_sim.sh
+\end{minted}
+}}
+
+Lines 441-447 of `simulator_synergy.py` specify the job load and scheduling policies to run as arrays. These can be modified to reduce the number of experiments, and consequently the execution time for A<sub>3</sub>. 
+
+To reproduce Figure 13 in the paper, run the following plotting script:
+```
+python plot_synergy_fifo.py
+```
+To reproduce Figures 15 and 16 in the paper, run the following plotting script:
+```
+python plot_synergy_las.py
+python plot_synergy_srtf.py
+```
+
+
+### Conda Installation
+(1) Get the latest version of Anaconda. The code has been tested with Anaconda3 23.3.1
+```
+wget https://repo.anaconda.com/archive/Anaconda3-2023.03-1-Linux-x86_64.sh
+```
+(2) Run the install script to install Anaconda
+```
+chmod +x Anaconda3-2023.03-1-Linux-x86_64.sh
+./Anaconda3-2023.03-1-Linux-x86_64.sh
+source ~/.bashrc
+conda --version
+```
