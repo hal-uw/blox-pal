@@ -3,7 +3,7 @@ This repository contains the source code implementation for the submission paper
 
 ### Pull this respository
 ```
-git clone https://github.com/rutwik-n-jain/blox-pal.git
+git clone https://github.com/rutwik-n-jain/hal_uw.git
 cd blox-pal
 git checkout artifact
 ```
