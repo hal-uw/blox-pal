@@ -10,7 +10,7 @@ git checkout artifact
 ### Install dependencies
 The following steps are used to create a conda virtual environment with the necessary dependencies installed. 
 
-To install conda, follow steps in [Conda Instllation](#Conda-Installation)
+To install conda, follow steps in [Conda Installation](#Conda-Installation)
 
 
 ### A<sub>1</sub>: Sia Simulations
