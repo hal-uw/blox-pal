@@ -200,6 +200,9 @@ def parse_args(parser):
         "--round-duration", type=int, default=300, help="Round duration in seconds"
     )
     parser.add_argument(
+        "--locality-penalty", type=float, default=1.7, help="Locality Penalty (Cost for allocation spilling across nodes)"
+    )
+    parser.add_argument(
         "--start-id-track", type=int, default=3000, help="Starting ID to track"
     )
     parser.add_argument(

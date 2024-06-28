@@ -149,7 +149,7 @@ placement_labels = ["Packed-Sticky", "Packed-Non-Sticky",  "Random-Sticky", "Ran
 
 
 # Sort the DataFrame for better presentation
-df_jct.sort_values(by=['placement', 'workload'], inplace=True)
+df_jct.sort_values(by=['placement', 'locality_penalty'], inplace=True)
 
 # print(result_df)
 # result_df.to_csv("geomean.csv")
@@ -171,7 +171,7 @@ plt.figure(figsize=(10,4))
 # Sort the dataframe based on avg_jct in descending order
 g = sns.catplot(
     x="locality_penalty",
-    y="norm_perf",
+    y="avg_jct",
     hue="placement",
     hue_order=custom_order,
     legend=False,

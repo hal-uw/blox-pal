@@ -48,6 +48,7 @@ class BloxManager(object):
         self.first_submit_time = None
         self.last_round_time = 0
         self.terminate = False
+        self.locality_penalty = args.locality_penalty
         return None
 
     def reset(self, args: argparse.ArgumentParser) -> None:
@@ -436,7 +437,7 @@ class BloxManager(object):
         else:
             penalty = 1.0
 
-        const_lf = 1.7  # const_lf locality penalty if allocation is ACROSS nodes   
+        const_lf = self.locality_penalty # const_lf locality penalty if allocation is ACROSS nodes   
 
         node_df = gpu_df[gpu_df["GPU_ID"].isin(gpus_to_launch)]
         unique_node_ids = list(node_df["Node_ID"].unique())

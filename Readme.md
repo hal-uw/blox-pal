@@ -106,15 +106,12 @@ python plot_sia_sim_losweep.py
 We vary the job arrival rate, and in turn, the contention level on the cluster, and measure JCTs to evaluate the performance of our policies. We use the Synergy workload and simulate a 256 GPU cluster. These experiments are also run with three different scheduling policies - FIFO, LAS, and SRTF. 
 
 ### Execution
-We provide a run script `run_synergy_baseline.sh` to vary job load from 8 to 14 jobs/hour and run experiments for all 3 schedulers. 
+We provide a run script `run_synergy_sim.sh` to vary job load from 8 to 14 jobs/hour and run experiments for all 3 schedulers. 
 
-{{ \footnotesize
-\begin{minted}{bash}
+```
 conda activate envpal
 ./run_synergy_sim.sh
-\end{minted}
-}}
-
+```
 Lines 441-447 of `simulator_synergy.py` specify the job load and scheduling policies to run as arrays. These can be modified to reduce the number of experiments, and consequently the execution time for A<sub>3</sub>. 
 
 To reproduce Figure 13 in the paper, run the following plotting script:

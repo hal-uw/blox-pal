@@ -18,6 +18,7 @@ class PALPlacement(object):
         self.alloc_order = {}
         # per class dataframes containing GPU_ID, Node_ID and sf for all GPUs
         self.dict_of_dfs = {}
+        self.locality_penalty = args.locality_penalty
         pass
 
     @staticmethod
@@ -54,7 +55,7 @@ class PALPlacement(object):
         """
         if not bool(self.alloc_order):
             if not gpu_df.empty:   #get alloc order based on L-V Matrix only if there are GPUs registered
-                self.alloc_order, self.dict_of_dfs = get_slowdown_factors(gpu_df)
+                self.alloc_order, self.dict_of_dfs = get_slowdown_factors(gpu_df, self.locality_penalty)
         #gpu_df.to_csv("/scratch1/08503/rnjain/blox-pal/logs/pal-runs/gpu_df.csv")
         job_order = new_job_schedule["job_order"]
         scheduler = new_job_schedule.get("scheduler")
@@ -498,7 +499,7 @@ def get_optimal_k(data: pd.DataFrame, outliers: pd.Series) -> int:
         #optimal_k += num_outliers
         return optimal_k
 
-def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
+def get_slowdown_factors(gpu_df: pd.DataFrame, locality_penalty) ->  Tuple[dict,dict]:
     slowdown_factors = {}
     locality_dict = {}
     dict_of_dfs = {}
@@ -590,7 +591,7 @@ def get_slowdown_factors(gpu_df: pd.DataFrame) ->  Tuple[dict,dict]:
         lf_within        = 1.0
         # Constant locality penalty of 1.7
         # lf_across        = lf_model[key]
-        lf_across        = 1.7
+        lf_across        = locality_penalty
         sfs_list = df_copy['sf'].unique()
 
         # Ordering of sfs vs locality for each class

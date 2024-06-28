@@ -63,8 +63,8 @@ temp_folder_name = ""
 exp_prefix = "None"
 placement = ["Default-Packed-S", "Default-Packed-NS", "Default-Random-NS", "Default-Random-S", "PMFirst", "PAL"]
 placement_labels = {
-    "Default-Packed-S": "Packed-Sticky",
-    "Default-Packed-NS": "Packed-Non-Sticky", 
+    "Default-Packed-S": "Packed-Non-Sticky",
+    "Default-Packed-NS": "Packed-Sticky", 
     "Default-Random-S": "Random-Sticky", 
     "Default-Random-NS": "Random-Non-Sticky",
     "PMFirst":"PMFirst",

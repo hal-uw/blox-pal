@@ -23,7 +23,12 @@ for lf in "${locality_penalty[@]}"; do
     --trace $trace_path &
     pid1=$!
 
-    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py --start-id-track 0 --stop-id-track 159 --round-duration 360 --simulate &
+    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python blox_new_flow_multi_run.py \
+    --start-id-track 0 \
+    --stop-id-track 159 \
+    --round-duration 360 \
+    --locality-penalty $lf \
+    --simulate &
     pid2=$!
 
     # Wait for resource_manager.py to finish
