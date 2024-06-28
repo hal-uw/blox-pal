@@ -1,4 +1,7 @@
 # PAL: A Variability-Aware Policy for Cluster Scheduling in GPU-Rich HPC Systems
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12575031.svg)](https://doi.org/10.5281/zenodo.12575031)
+
 This repository contains the source code implementation for the submission paper "PAL: A Variability-Aware Policy for Cluster Scheduling in GPU-Rich HPC Systems". The source code is from Blox ("Blox: A Modular Toolkit for Deep Learning Schedulers") with PAL and PM-First placement policies added.
 
 ### Pull this respository
