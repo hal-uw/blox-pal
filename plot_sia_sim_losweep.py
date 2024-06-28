@@ -116,7 +116,7 @@ plot_data = {
     "p99_jct": [],
 }
 
-workload = [1.0, 1.5, 2.0 , 2.5, 3.0]
+workload = [1.0, 1.5, 2.0, 2.5, 3.0]
 placement_jct = {}
 placement_wait_time = {}
 for i, placement in enumerate(placement_policies):

@@ -72,8 +72,8 @@ placement_labels = {
 }
 # placement = ["PMFirst"]
 job_ids_to_track = [0, 159]
-#config = {"Fifo": [1,2,3,4,5,6,7,8]} 
-config = {"Fifo": [1,2,3,4,5]} 
+config = {"Fifo": [1,2,3,4,5,6,7,8]} 
+# config = {"Fifo": [1,2]} 
 
 job_data = {
     'scheduler': [],

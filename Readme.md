@@ -65,16 +65,7 @@ We evaluated the performance of our placement policies relative to baselines usi
 
 Simulations require a CPU machine. All experiments were run with an x86_64 machine (Intel E5-2630 v3 8-core CPUs at 2.40 GHz - Haswell w/ EM64T with 8x 16 GB DDR4 memory) running Ubuntu 18.04.6. Code has also been tested on Mac M1 with Darwin Kernel Version 23.4.0.
 
-### Software Requirements
-
-Simulations use gRPC to communicate, while analysis scripts use matplotlib, seaborn, and other Python libraries to plot several collected metrics. We recommend that users create a virtual environment to install these dependencies.
-
-
-Before running simulations, we need to build gRPC stubs.
-```
-cd blox/deployment
-make rpc
-```
+### Execution
 
 We provide a run script that launches all simulations and produces relevant output logs for each workload trace in the Sia-Philly trace set. 
 To reduce computational time, edit line 7 of the script to run fewer traces. 
@@ -87,6 +78,7 @@ To reproduce Figure 10 in the paper, run the following plotting script:
 ```
 python plot_sia_sim_baseline.py
 ```
+Note: If you ran fewer workload traces, update line 75 of `plot_sia_sim_baseline.py` to accordingly adjust the plot. 
 
 ## A<sub>2</sub>: Sia Locality-Sweep Simulation
 
