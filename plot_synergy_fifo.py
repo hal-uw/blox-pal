@@ -85,7 +85,7 @@ placement_labels = {
     "PAL": "PAL"
 }
 # placement = ["PMFirst"]
-job_ids_to_track = [2000, 3000]
+job_ids_to_track = [0, 10]
 #config = {"Fifo": [1,2,3,4,5,6,7,8]} 
 config = {"Fifo": [8.0, 10.0, 12.0, 14.0]} 
 
