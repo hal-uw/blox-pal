@@ -26,7 +26,6 @@ from torch.nn import DataParallel
 from torchvision import transforms
 from workloads.lucid.pointnet.dataset import ShapeNetDataset
 from workloads.lucid.pointnet.pointnet import PointNetCls, feature_transform_regularizer
-from blox_enumerator import bloxEnumerate
 
 def setup_logging(job_id, rank):
     log_file = f'/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{job_id}_{rank}.log'
@@ -110,7 +109,6 @@ def benchmark_pointnet(model_name, batch_size):
     # Train
     def benchmark_step(job_id):
         iter_num = 0
-        enumerator = bloxEnumerate(range(1000000), args.job_id)
         # Prevent total batch number < warmup+benchmark situation
         total_attained_service = 0
         start = time.time()
@@ -128,18 +126,11 @@ def benchmark_pointnet(model_name, batch_size):
                 optimizer.step()
                 end = time.time()
                 iter_num += 1
+                print(iter_num)
                 total_attained_service += end - start
-                ictr, status = enumerator.__next__()
-                logging.info(f"ictr {ictr} status {status}")
-                enumerator.push_metrics(
-                    {"attained_service": end - start,
-                     "per_iter_time": end - start,
-                     "iter_num": 1}
-                )
                 start = time.time()
-                if status is False:
+                if iter_num > 5:
                     logging.info("Job Exit Notify")
-                    enumerator.job_exit_notify()
                     logging.info("Exit")
                     torch.cuda.empty_cache()
                     sys.exit()

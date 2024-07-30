@@ -25,8 +25,6 @@ sys.path.append(
     )
 )
 
-from blox_enumerator import bloxEnumerate
-
 # Define logging configurations
 def setup_logging(job_id, rank):
     log_file = f'/scratch1/08503/rnjain/blox-pal/logs/job-runs/training_worker_{job_id}_{rank}.log'
@@ -222,7 +220,6 @@ def benchmark_dcgan(model_name, batch_size):
     def benchmark_step(job_id):
         iter_num = 0
         total_attained_service = 0
-        enumerator = bloxEnumerate(range(1000000), args.job_id)
         # Prevent total batch number < warmup+benchmark situation
         while True:
             start = time.time()
@@ -262,19 +259,12 @@ def benchmark_dcgan(model_name, batch_size):
                 end = time.time()
                 iter_num += 1
                 total_attained_service += end - start
+                print(iter_num)
                 logging.info(f"iter_num: {iter_num}")
                 logging.info(f"job_id: {job_id}")
-                ictr, status = enumerator.__next__()
-                logging.info(f"ictr {ictr} status {status}")
-                enumerator.push_metrics(
-                    {"attained_service": end - start,
-                     "per_iter_time": end - start,
-                     "iter_num": 1}
-                )
                 start = time.time()
-                if status is False:
+                if iter_num > 5:
                     logging.info(f"Job Exit Notify {job_id}")
-                    enumerator.job_exit_notify()
                     logging.info("Exit")
                     torch.cuda.empty_cache()
                     sys.exit()

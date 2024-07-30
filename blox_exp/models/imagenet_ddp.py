@@ -31,7 +31,6 @@ def setup_logging(job_id, rank):
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 from workloads.lucid.cifar.models import *
-from blox_enumerator import bloxEnumerate
 
 # Benchmark settings
 parser = argparse.ArgumentParser(
@@ -82,7 +81,7 @@ def benchmark_imagenet(model_name, batch_size):
     # Load the ImageNet dataset
     logging.info(f"before ImageFolder")
     train_dataset = ImageFolder(
-        root="/scratch1/08503/rnjain/data-files/imagenet/ILSVRC2012_img_train", transform=transform
+        root="/scratch1/08503/rnjain/data-files/imagenet/tiny-imagenet-200/train", transform=transform
     )
     logging.info(f"after ImageFolder")
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -101,7 +100,6 @@ def benchmark_imagenet(model_name, batch_size):
 
     def benchmark_step(job_id):
         iter_num = 0
-        enumerator = bloxEnumerate(range(1000000), args.job_id)
         total_attained_service = 0
         while True:
             start = time.time()
@@ -114,19 +112,12 @@ def benchmark_imagenet(model_name, batch_size):
                 optimizer.step()
                 end = time.time()
                 iter_num += 1
+                print(iter_num)
                 total_attained_service += end - start
-                ictr, status = enumerator.__next__()
-                logging.info(f"ictr {ictr} status {status}")
                 logging.info(f"attained_service {total_attained_service} iter_num {iter_num}")
-                enumerator.push_metrics(
-                    {"attained_service": end - start,
-                     "per_iter_time": end - start,
-                     "iter_num": 1}
-                )
                 start = time.time()
-                if status is False:
+                if iter_num > 5:
                     logging.info("Job exit notify")
-                    enumerator.job_exit_notify()
                     logging.info("Exit")
                     torch.cuda.empty_cache()
                     sys.exit()
