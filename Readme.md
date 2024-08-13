@@ -15,6 +15,7 @@ git checkout artifact
 The following steps are used to create a conda virtual environment with the necessary dependencies installed. 
 
 To install conda, follow steps in [Conda Installation](#Conda-Installation)
+This step install necesaary Python packages such as `grpcio`, `grpcio-tools`, `numpy`, `pandas` and `seaborn`. 
 
 ```
 conda create -n envpal python=3.8
@@ -22,12 +23,13 @@ conda activate envpal
 python3 -m pip install -r requirements.txt
 ```
 
-Before running simulations, we need to build gRPC stubs.
+Before running simulations, we need to build gRPC stubs. 
+For first-time build, you need to create a directory for gRPC stubs. 
 ```
 cd blox/deployment
+mkdir grpc_stubs
 make rpc
 ```
-
 
 ## Artifact Components
 
